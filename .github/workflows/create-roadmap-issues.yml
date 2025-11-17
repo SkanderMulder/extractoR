@@ -1,0 +1,38 @@
+name: Create Roadmap Issues
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'Type "create" to confirm issue creation'
+        required: true
+        default: ''
+
+jobs:
+  create-issues:
+    runs-on: ubuntu-latest
+    if: github.event.inputs.confirm == 'create'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Install dependencies
+        run: |
+          pip install requests
+
+      - name: Create issues
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          python3 create_issues.py
+
+      - name: Summary
+        run: |
+          echo "✅ Issues created successfully!"
+          echo "Check: https://github.com/${{ github.repository }}/issues"
