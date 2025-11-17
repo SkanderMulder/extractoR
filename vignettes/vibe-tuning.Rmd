@@ -1,0 +1,625 @@
+---
+title: "Vibe Tuning: Optimizing Prompt Content"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Vibe Tuning: Optimizing Prompt Content}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  eval = FALSE  # Examples require API keys
+)
+```
+
+```{r setup}
+library(extractoR)
+```
+
+## Introduction
+
+The way you phrase a prompt can dramatically affect LLM performance. Some models respond better to concise instructions, while others benefit from detailed explanations. Some work well with formal language, while others perform better with encouraging tones.
+
+But how do you know which prompt style is optimal for *your* specific extraction task?
+
+**Vibe tuning** solves this by automatically generating and testing different prompt variations to find what works best. Instead of just selecting between predefined strategies, it optimizes the actual *content* of your prompts - the tone, structure, and phrasing.
+
+## What is Vibe Tuning?
+
+Vibe tuning is an automated prompt optimization approach inspired by:
+
+- **Prompt optimization research**: Testing variations to find what works
+- **Evaluation frameworks** like [vitals](https://vitals.tidyverse.org/): Systematic performance measurement
+- **"Vibe coding"**: The art of finding the right tone and style for LLM interactions
+
+### How It Works
+
+1. **Generate**: Creates multiple prompt variations with different tones, structures, and phrasings
+2. **Test**: Runs each variation on your example data
+3. **Measure**: Tracks success rate, attempts needed, time taken, and accuracy
+4. **Recommend**: Identifies the best-performing prompt template
+
+The variations include:
+- **concise_direct**: Minimal, straight-to-the-point instructions
+- **detailed_formal**: Comprehensive, structured requirements
+- **encouraging**: Supportive, helpful tone
+- **example_driven**: Shows examples of expected format
+- **step_by_step**: Breaks down the task into steps
+- **minimal**: Ultra-concise, terse instructions
+
+## Basic Vibe Tuning
+
+### Step 1: Prepare Examples
+
+Good examples are crucial for meaningful optimization. Each example needs:
+
+- `text`: The input text to extract from (required)
+- `expected`: The expected output for accuracy checking (optional but recommended)
+
+```{r}
+# Sentiment analysis examples
+examples <- list(
+  list(
+    text = "This product exceeded all my expectations! Absolutely amazing quality.",
+    expected = list(
+      sentiment = "positive",
+      confidence = 0.95,
+      keywords = list("exceeded expectations", "amazing quality")
+    )
+  ),
+  list(
+    text = "Complete waste of money. Poor quality and terrible customer service.",
+    expected = list(
+      sentiment = "negative",
+      confidence = 0.9,
+      keywords = list("waste of money", "poor quality", "terrible service")
+    )
+  ),
+  list(
+    text = "It's okay. Does what it's supposed to do, nothing more.",
+    expected = list(
+      sentiment = "neutral",
+      confidence = 0.85,
+      keywords = list("okay", "does what it's supposed to")
+    )
+  )
+)
+
+# Define your schema
+schema <- list(
+  sentiment = c("positive", "negative", "neutral"),
+  confidence = "numeric",
+  keywords = list("character")
+)
+```
+
+### Step 2: Run Vibe Tuning
+
+```{r}
+result <- vibe_tune(
+  examples = examples,
+  schema = schema,
+  model = "gpt-4o-mini",
+  .progress = TRUE
+)
+```
+
+The function will test each prompt variation on all your examples and show progress as it runs.
+
+### Step 3: Examine Results
+
+```{r}
+# View summary
+print(result)
+
+# View detailed metrics
+result$metrics
+
+# Visualize performance
+plot(result)
+
+# Get detailed summary
+summary(result)
+```
+
+### Step 4: Use the Optimized Prompt
+
+```{r}
+# Use the best prompt in production
+new_text <- "Great product but a bit pricey. Still worth it though!"
+
+extracted <- extract_with_prompt(
+  text = new_text,
+  schema = schema,
+  prompt_template = result$best_prompt,
+  model = "gpt-4o-mini"
+)
+
+str(extracted)
+```
+
+### Step 5: Save for Later Use
+
+```{r}
+# Save the tuning results
+save_vibe_result(result, "sentiment_optimized_prompt.rds")
+
+# Later, load and use
+loaded_result <- load_vibe_result("sentiment_optimized_prompt.rds")
+
+# Extract with loaded prompt
+extract_with_prompt(
+  text = "Another review to analyze",
+  schema = loaded_result$schema,
+  prompt_template = loaded_result$best_prompt,
+  model = loaded_result$model
+)
+```
+
+## Understanding Performance Metrics
+
+Vibe tuning evaluates each prompt variation on four key metrics:
+
+1. **Success Rate**: Percentage of examples that completed successfully (higher is better)
+2. **Average Attempts**: How many retries were needed (lower is better)
+3. **Average Time**: Seconds per extraction (lower is faster)
+4. **Average Accuracy**: Similarity to expected outputs (higher is better, requires `expected` in examples)
+
+Access these metrics programmatically:
+
+```{r}
+# Get metrics dataframe
+metrics <- result$metrics
+
+# Find the fastest prompt
+fastest <- metrics$prompt_id[which.min(metrics$avg_time)]
+
+# Find the most accurate prompt
+most_accurate <- metrics$prompt_id[which.max(metrics$avg_accuracy)]
+
+# Get a specific prompt template
+fast_prompt <- get_prompt_template(result, fastest)
+```
+
+## Real-World Workflows
+
+### Workflow 1: Customer Feedback Analysis
+
+Optimize for both speed and accuracy when processing thousands of reviews:
+
+```{r}
+# Prepare diverse examples
+feedback_examples <- list(
+  list(
+    text = "The new update broke everything! App crashes constantly now.",
+    expected = list(
+      overall_sentiment = "negative",
+      topic = "software update",
+      urgency = "high",
+      mentioned_issues = list("crashes", "broken functionality")
+    )
+  ),
+  list(
+    text = "Love the new dark mode feature! Makes reading at night much easier.",
+    expected = list(
+      overall_sentiment = "positive",
+      topic = "feature",
+      urgency = "low",
+      mentioned_issues = list()
+    )
+  ),
+  list(
+    text = "Can you add export to PDF? That would be really useful.",
+    expected = list(
+      overall_sentiment = "neutral",
+      topic = "feature request",
+      urgency = "medium",
+      mentioned_issues = list()
+    )
+  ),
+  list(
+    text = "Good app overall but the sync is slow and buggy sometimes.",
+    expected = list(
+      overall_sentiment = "neutral",
+      topic = "performance",
+      urgency = "medium",
+      mentioned_issues = list("slow sync", "bugs")
+    )
+  )
+)
+
+feedback_schema <- list(
+  overall_sentiment = c("positive", "negative", "neutral"),
+  topic = c("feature", "bug", "performance", "feature request", "software update"),
+  urgency = c("low", "medium", "high"),
+  mentioned_issues = list("character")
+)
+
+# Run vibe tuning
+feedback_result <- vibe_tune(
+  examples = feedback_examples,
+  schema = feedback_schema,
+  model = "gpt-4o-mini"
+)
+
+# Save the optimized prompt
+save_vibe_result(feedback_result, "feedback_analyzer.rds")
+
+# Use in production
+analyze_feedback <- function(feedback_text) {
+  extract_with_prompt(
+    text = feedback_text,
+    schema = feedback_schema,
+    prompt_template = feedback_result$best_prompt,
+    model = "gpt-4o-mini"
+  )
+}
+
+# Process new feedback
+analyze_feedback("The app keeps logging me out. Very frustrating!")
+```
+
+### Workflow 2: Academic Paper Metadata
+
+Optimize for maximum accuracy when extracting from research papers:
+
+```{r}
+paper_examples <- list(
+  list(
+    text = "BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding
+            Jacob Devlin, Ming-Wei Chang, Kenton Lee, Kristina Toutanova
+            Google AI Language
+            Published in NAACL 2019
+
+            Abstract: We introduce BERT, a new language representation model...",
+    expected = list(
+      title = "BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding",
+      authors = list("Jacob Devlin", "Ming-Wei Chang", "Kenton Lee", "Kristina Toutanova"),
+      institution = "Google AI Language",
+      year = 2019,
+      venue = "NAACL"
+    )
+  ),
+  list(
+    text = "Attention Is All You Need (2017)
+            Vaswani, A., Shazeer, N., Parmar, N., et al.
+            NeurIPS
+
+            The dominant sequence transduction models...",
+    expected = list(
+      title = "Attention Is All You Need",
+      authors = list("Vaswani, A.", "Shazeer, N.", "Parmar, N."),
+      institution = "unknown",
+      year = 2017,
+      venue = "NeurIPS"
+    )
+  )
+)
+
+paper_schema <- list(
+  title = "character",
+  authors = list("character"),
+  institution = "character",
+  year = "integer",
+  venue = "character"
+)
+
+# Use higher max_retries for accuracy-critical tasks
+paper_result <- vibe_tune(
+  examples = paper_examples,
+  schema = paper_schema,
+  model = "gpt-4o",  # Use more capable model
+  max_retries = 10
+)
+
+# Check accuracy before deployment
+best_metrics <- paper_result$metrics[
+  paper_result$metrics$prompt_id == paper_result$best_prompt_id,
+]
+
+if (!is.na(best_metrics$avg_accuracy) && best_metrics$avg_accuracy < 0.95) {
+  warning("Best prompt only achieves ", round(best_metrics$avg_accuracy * 100, 1),
+          "% accuracy. Consider using more examples or a different model.")
+}
+
+# Save and use
+save_vibe_result(paper_result, "paper_extractor.rds")
+```
+
+### Workflow 3: Comparing Models
+
+Determine if a more expensive model is worth the cost:
+
+```{r}
+# Test with fast model
+fast_result <- vibe_tune(
+  examples = examples,
+  schema = schema,
+  model = "gpt-4o-mini"
+)
+
+# Test with capable model
+capable_result <- vibe_tune(
+  examples = examples,
+  schema = schema,
+  model = "gpt-4o"
+)
+
+# Compare best performance
+data.frame(
+  model = c("gpt-4o-mini", "gpt-4o"),
+  best_prompt = c(fast_result$best_prompt_id, capable_result$best_prompt_id),
+  success_rate = c(
+    max(fast_result$metrics$success_rate),
+    max(capable_result$metrics$success_rate)
+  ),
+  avg_accuracy = c(
+    max(fast_result$metrics$avg_accuracy, na.rm = TRUE),
+    max(capable_result$metrics$avg_accuracy, na.rm = TRUE)
+  ),
+  avg_time = c(
+    min(fast_result$metrics$avg_time),
+    min(capable_result$metrics$avg_time)
+  )
+)
+```
+
+## Best Practices
+
+### 1. Use Representative Examples
+
+```{r}
+# Good: Diverse scenarios
+examples <- list(
+  list(text = "Simple, straightforward case"),
+  list(text = "Complex case with multiple nested elements and edge cases..."),
+  list(text = "Edge case with missing or unusual information"),
+  list(text = "Typical production example with moderate complexity")
+)
+
+# Not ideal: All too similar
+examples <- list(
+  list(text = "Positive review 1"),
+  list(text = "Positive review 2"),
+  list(text = "Positive review 3")
+)
+```
+
+### 2. Always Include Expected Outputs
+
+Without expected outputs, you can't measure accuracy:
+
+```{r}
+# With expected - full metrics
+list(
+  text = "Sample text",
+  expected = list(field1 = "value", field2 = 123)
+)
+
+# Without expected - limited metrics
+list(text = "Sample text")  # Only success/attempts/time
+```
+
+### 3. Use Enough Examples
+
+- **Minimum**: 3-5 examples for quick testing
+- **Recommended**: 10-20 examples for reliable optimization
+- **Optimal**: 30+ examples for production decisions
+
+### 4. Consider Multiple Metrics
+
+Don't optimize for just one factor:
+
+```{r}
+# Example: Balance speed and accuracy
+metrics <- result$metrics
+
+# Prompt A might be 100% accurate but slow
+# Prompt B might be 95% accurate but 5x faster
+# For high-volume production, Prompt B might be better overall
+
+# Filter to high-performing prompts
+good_prompts <- metrics[metrics$success_rate >= 0.95, ]
+
+# Among those, pick the fastest
+best_for_production <- good_prompts$prompt_id[which.min(good_prompts$avg_time)]
+```
+
+### 5. Save and Version Your Results
+
+```{r}
+# Save with descriptive names and dates
+save_vibe_result(result, paste0("sentiment_v1_", Sys.Date(), ".rds"))
+
+# Document what changed
+cat("# Optimization Log\n",
+    "Date:", as.character(Sys.Date()), "\n",
+    "Model:", result$model, "\n",
+    "Best prompt:", result$best_prompt_id, "\n",
+    "Success rate:", max(result$metrics$success_rate), "\n",
+    file = "optimization_log.txt", append = TRUE)
+```
+
+## Troubleshooting
+
+### All Prompts Perform Poorly
+
+```{r}
+# Check 1: Is the schema too complex?
+# Simplify to core fields only
+simplified_schema <- list(
+  main_field = "character",
+  category = c("A", "B", "C")
+)
+
+# Check 2: Try a more capable model
+result <- vibe_tune(examples, schema, model = "gpt-4o")
+
+# Check 3: Increase retries
+result <- vibe_tune(examples, schema, max_retries = 15)
+
+# Check 4: Review a single example manually
+test_extract <- extract(
+  text = examples[[1]]$text,
+  schema = schema,
+  model = "gpt-4o-mini",
+  .progress = TRUE
+)
+```
+
+### Inconsistent Results
+
+```{r}
+# Ensure deterministic outputs
+result <- vibe_tune(
+  examples = examples,
+  schema = schema,
+  temperature = 0.0  # Critical for consistency
+)
+```
+
+### Want to Use a Specific Prompt Style
+
+```{r}
+# Don't like the "best" recommendation?
+# Examine all results
+print(result$metrics)
+
+# Use a different one
+formal_prompt <- get_prompt_template(result, "detailed_formal")
+
+# Or manually test
+extract_with_prompt(
+  text = test_text,
+  schema = schema,
+  prompt_template = formal_prompt,
+  model = "gpt-4o-mini"
+)
+```
+
+## Production Deployment
+
+Complete workflow from optimization to production:
+
+```{r}
+# 1. Collect representative examples (10-20 minimum)
+examples <- collect_training_examples()
+
+# 2. Run vibe tuning
+tuning_result <- vibe_tune(
+  examples = examples,
+  schema = production_schema,
+  model = "gpt-4o-mini",
+  temperature = 0.0
+)
+
+# 3. Review and validate results
+print(tuning_result)
+plot(tuning_result)
+
+best_metrics <- tuning_result$metrics[
+  tuning_result$metrics$prompt_id == tuning_result$best_prompt_id,
+]
+
+# 4. Quality gates
+stopifnot(best_metrics$success_rate >= 0.95)
+if (!is.na(best_metrics$avg_accuracy)) {
+  stopifnot(best_metrics$avg_accuracy >= 0.90)
+}
+
+# 5. Save results
+save_vibe_result(tuning_result, "production_prompt_v1.rds")
+
+# 6. Create production function
+extract_production <- function(text) {
+  extract_with_prompt(
+    text = text,
+    schema = tuning_result$schema,
+    prompt_template = tuning_result$best_prompt,
+    model = tuning_result$model,
+    temperature = 0.0
+  )
+}
+
+# 7. Document configuration
+config <- list(
+  prompt_id = tuning_result$best_prompt_id,
+  model = tuning_result$model,
+  success_rate = best_metrics$success_rate,
+  avg_accuracy = best_metrics$avg_accuracy,
+  tuning_date = Sys.Date(),
+  num_examples = length(examples)
+)
+
+saveRDS(config, "production_config.rds")
+
+# 8. Schedule re-tuning
+# Re-run vibe tuning:
+# - When model versions change
+# - When data distribution shifts
+# - Quarterly or when performance degrades
+```
+
+## Advanced Usage
+
+### Testing Custom Variations
+
+You can test fewer or more variations:
+
+```{r}
+# Test only 3 variations (faster)
+result <- vibe_tune(examples, schema, num_variations = 3)
+
+# Test all 6 variations (default)
+result <- vibe_tune(examples, schema, num_variations = 6)
+```
+
+### Inspecting Prompt Templates
+
+See exactly what prompts are being tested:
+
+```{r}
+# View the best prompt template
+sample_text <- "Sample input"
+sample_schema <- jsonlite::toJSON(list(type = "object"), auto_unbox = TRUE)
+
+# Generate example prompt
+example_prompt <- result$best_prompt(sample_text, sample_schema)
+cat(example_prompt)
+
+# Compare different prompt styles
+for (prompt_id in names(result$all_prompts)) {
+  cat("\n=====", prompt_id, "=====\n")
+  prompt_fn <- result$all_prompts[[prompt_id]]
+  cat(substr(prompt_fn(sample_text, sample_schema), 1, 200), "...\n")
+}
+```
+
+### Batch Processing with Optimized Prompts
+
+```{r}
+# Load optimized prompt once
+opt_prompt <- load_vibe_result("my_optimized_prompt.rds")
+
+# Process many documents efficiently
+documents <- list(doc1, doc2, doc3, ...)
+
+results <- lapply(documents, function(doc) {
+  extract_with_prompt(
+    text = doc,
+    schema = opt_prompt$schema,
+    prompt_template = opt_prompt$best_prompt,
+    model = opt_prompt$model
+  )
+})
+```
+
+## Learn More
+
+- **Getting Started**: See `vignette("getting-started")` for extractoR basics
+- **VITALS package**: Visit [vitals.tidyverse.org](https://vitals.tidyverse.org/) for LLM evaluation
+- **Function reference**: `?vibe_tune`, `?extract_with_prompt`, `?save_vibe_result`
+- **Prompt engineering**: Research "prompt optimization" and "prompt tuning" for deeper insights
