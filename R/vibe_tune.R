@@ -371,16 +371,66 @@ generate_prompt_variations <- function(json_schema_str, num_variations = 6) {
 }
 
 
-#' @title Extract with Custom Prompt Template
-#' @description Performs extraction using a custom prompt template
-#' @param text The input text
-#' @param json_schema_str The JSON schema as string
-#' @param prompt_template A function that takes (text, schema) and returns a prompt
-#' @param model The model to use
-#' @param max_retries Maximum retry attempts
-#' @param temperature Sampling temperature
-#' @param .progress Show progress
-#' @return Extracted data
+#' @title Extract with Optimized Prompt Template
+#'
+#' @description
+#' Perform extraction using an optimized prompt template from vibe tuning.
+#' This allows you to use the best-performing prompt discovered through
+#' vibe_tune() in production.
+#'
+#' @param text The input text from which to extract information.
+#' @param schema A list defining the desired output structure.
+#' @param prompt_template A prompt template function from vibe_tune() results.
+#'   Should take (text, schema) and return a prompt string.
+#' @param model The LLM model to use for extraction.
+#' @param max_retries Maximum number of retry attempts (default: 5).
+#' @param temperature Sampling temperature (default: 0.0).
+#' @param .progress Logical, whether to show progress feedback.
+#'
+#' @return A list with the extracted information.
+#'
+#' @export
+#'
+#' @examples
+#' \dontrun{
+#' # First, run vibe tuning
+#' result <- vibe_tune(examples, schema, model = "gpt-4o-mini")
+#'
+#' # Then use the optimized prompt
+#' extracted <- extract_with_prompt(
+#'   text = "New text to process",
+#'   schema = schema,
+#'   prompt_template = result$best_prompt,
+#'   model = "gpt-4o-mini"
+#' )
+#' }
+extract_with_prompt <- function(text,
+                                schema,
+                                prompt_template,
+                                model = "gpt-4o-mini",
+                                max_retries = 5,
+                                temperature = 0.0,
+                                .progress = FALSE) {
+
+  # Convert schema to JSON Schema
+  json_schema_obj <- as_json_schema(schema)
+  json_schema_str <- json_schema_obj@json_schema_str
+
+  # Use internal function
+  extract_with_custom_prompt(
+    text = text,
+    json_schema_str = json_schema_str,
+    prompt_template = prompt_template,
+    model = model,
+    max_retries = max_retries,
+    temperature = temperature,
+    .progress = .progress
+  )
+}
+
+
+#' @title Extract with Custom Prompt Template (Internal)
+#' @description Internal function for extraction with custom prompts
 #' @keywords internal
 extract_with_custom_prompt <- function(text,
                                        json_schema_str,
@@ -623,4 +673,120 @@ plot.vibe_tune_result <- function(x, ...) {
   }
 
   invisible(x)
+}
+
+
+#' @title Save Vibe Tune Results
+#'
+#' @description
+#' Save vibe tuning results to a file for later use. This allows you to
+#' reuse optimized prompts without re-running the tuning process.
+#'
+#' @param result A vibe_tune_result object from vibe_tune().
+#' @param file Path to save the results (should end in .rds).
+#'
+#' @return Invisibly returns the file path.
+#'
+#' @export
+#'
+#' @examples
+#' \dontrun{
+#' # Run vibe tuning
+#' result <- vibe_tune(examples, schema, model = "gpt-4o-mini")
+#'
+#' # Save for later use
+#' save_vibe_result(result, "my_optimized_prompt.rds")
+#'
+#' # Later, load and use
+#' loaded <- load_vibe_result("my_optimized_prompt.rds")
+#' extract_with_prompt(text, schema, loaded$best_prompt, model = "gpt-4o-mini")
+#' }
+save_vibe_result <- function(result, file) {
+  if (!inherits(result, "vibe_tune_result")) {
+    stop("result must be a vibe_tune_result object", call. = FALSE)
+  }
+
+  saveRDS(result, file)
+  cli::cli_alert_success("Saved vibe tune result to {file}")
+  invisible(file)
+}
+
+
+#' @title Load Vibe Tune Results
+#'
+#' @description
+#' Load previously saved vibe tuning results.
+#'
+#' @param file Path to the saved vibe_tune_result file (.rds).
+#'
+#' @return A vibe_tune_result object.
+#'
+#' @export
+#'
+#' @examples
+#' \dontrun{
+#' # Load saved results
+#' result <- load_vibe_result("my_optimized_prompt.rds")
+#'
+#' # Use the optimized prompt
+#' extracted <- extract_with_prompt(
+#'   text = new_text,
+#'   schema = result$schema,
+#'   prompt_template = result$best_prompt,
+#'   model = result$model
+#' )
+#' }
+load_vibe_result <- function(file) {
+  if (!file.exists(file)) {
+    stop("File not found: ", file, call. = FALSE)
+  }
+
+  result <- readRDS(file)
+
+  if (!inherits(result, "vibe_tune_result")) {
+    stop("File does not contain a vibe_tune_result object", call. = FALSE)
+  }
+
+  cli::cli_alert_success("Loaded vibe tune result from {file}")
+  cli::cli_alert_info("Best prompt: {result$best_prompt_id}")
+  cli::cli_alert_info("Model: {result$model}")
+
+  result
+}
+
+
+#' @title Get Prompt Template by Name
+#'
+#' @description
+#' Extract a specific prompt template from vibe tuning results by name.
+#' Useful if you want to use a different variation than the "best" one.
+#'
+#' @param result A vibe_tune_result object.
+#' @param prompt_id Name of the prompt variation (e.g., "concise_direct").
+#'
+#' @return A prompt template function.
+#'
+#' @export
+#'
+#' @examples
+#' \dontrun{
+#' result <- vibe_tune(examples, schema, model = "gpt-4o-mini")
+#'
+#' # Get a specific prompt variation
+#' formal_prompt <- get_prompt_template(result, "detailed_formal")
+#'
+#' # Use it
+#' extract_with_prompt(text, schema, formal_prompt, model = "gpt-4o-mini")
+#' }
+get_prompt_template <- function(result, prompt_id) {
+  if (!inherits(result, "vibe_tune_result")) {
+    stop("result must be a vibe_tune_result object", call. = FALSE)
+  }
+
+  if (!prompt_id %in% names(result$all_prompts)) {
+    available <- paste(names(result$all_prompts), collapse = ", ")
+    stop("Prompt '", prompt_id, "' not found. Available: ", available, call. = FALSE)
+  }
+
+  result$all_prompts[[prompt_id]]
 }
