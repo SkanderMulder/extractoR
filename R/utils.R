@@ -1,4 +1,4 @@
-# Utility functions for instructoR
+# Utility functions for extractoR
 
 #' @title Format JSON Validation Errors
 #'

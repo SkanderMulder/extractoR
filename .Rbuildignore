@@ -1,6 +1,7 @@
 ^.git$
 ^.claude$
 ^.Rcheck$
+^..Rcheck$
 ^LICENSE\.md$
 ^doc$
 ^Meta$

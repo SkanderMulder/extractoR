@@ -5,7 +5,7 @@
 #' and, if invalid, generate feedback for the LLM to self-correct.
 #'
 #' @param initial_response The initial JSON string response from the LLM.
-#' @param json_schema_str The JSON schema as a string.
+#' @param json_schema_obj A `JsonSchema` S7 object.
 #' @param text The original input text that was sent to the LLM.
 #' @param model The LLM model being used.
 #' @param strategy The self-correction strategy ("reflect", "direct", "polite").
@@ -17,7 +17,7 @@
 #' @keywords internal
 validate_and_fix <- function(
   initial_response,
-  json_schema_str,
+  json_schema_obj,
   text,
   model,
   strategy,
@@ -26,6 +26,7 @@ validate_and_fix <- function(
 ) {
   attempt <- 1
   response <- initial_response
+  json_schema_str <- json_schema_obj@json_schema_str
 
   while (attempt <= max_retries) {
     valid <- jsonvalidate::json_validate(response, json_schema_str, engine = "ajv")

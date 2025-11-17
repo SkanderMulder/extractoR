@@ -1,3 +1,29 @@
+#' @import S7
+#' @importFrom S7 new_class
+NULL
+
+#' @title S7 Class for JSON Schema
+#'
+#' @description
+#' An S7 class to represent a JSON schema, including its R list definition
+#' and its string representation.
+#'
+#' @slot schema An R list representing the desired output structure.
+#' @slot json_schema_str The JSON schema as a string.
+#' @export
+JsonSchema <- new_class(
+  "JsonSchema",
+  properties = list(
+    schema = class_list,
+    json_schema_str = class_character
+  ),
+  validator = function(self) {
+    if (!is.list(self@schema)) {
+      "@schema must be a list."
+    }
+  }
+)
+
 #' @title Convert R List to JSON Schema
 #'
 #' @description
@@ -36,7 +62,7 @@ as_json_schema <- function(schema) {
     stop("Schema must be a list.", call. = FALSE)
   }
 
-  json_schema <- list(
+  json_schema_list <- list(
     type = "object",
     properties = list(),
     required = names(schema) # Assume all top-level fields are required
@@ -82,18 +108,31 @@ as_json_schema <- function(schema) {
         }
       } else if (is.list(items_def)) {
         # Array of objects (recursive call)
-        property$items <- as_json_schema(items_def)
+        property$items <- as_json_schema(items_def)@schema # Extract schema from JsonSchema object
       } else {
         stop("Unsupported array definition: ", deparse(value), call. = FALSE)
       }
     } else if (is.list(value) && length(value) > 1) {
       # Handle nested objects (recursive call)
-      property <- as_json_schema(value)
+      property <- as_json_schema(value)@schema # Extract schema from JsonSchema object
     } else {
       stop("Unsupported schema definition for '", name, "': ", deparse(value), call. = FALSE)
     }
-    json_schema$properties[[name]] <- property
+    json_schema_list$properties[[name]] <- property
   }
 
-  json_schema
+  create_JsonSchema(
+    schema = schema,
+    json_schema_str = jsonlite::toJSON(json_schema_list, auto_unbox = TRUE, pretty = TRUE)
+  )
+}
+
+#' @title Create a new JsonSchema object
+#' @description Helper function to create a new JsonSchema object.
+#' @param schema An R list representing the desired output structure.
+#' @param json_schema_str The JSON schema as a string.
+#' @return A JsonSchema S7 object.
+#' @export
+create_JsonSchema <- function(schema, json_schema_str) {
+  JsonSchema(schema = schema, json_schema_str = json_schema_str)
 }

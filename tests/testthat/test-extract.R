@@ -1,5 +1,6 @@
 library(testthat)
-library(instructoR)
+library(extractoR)
+library(S7)
 
 # Tests for as_json_schema ----
 
@@ -10,8 +11,10 @@ test_that("as_json_schema converts basic types correctly", {
     is_active = "logical",
     score = "numeric"
   )
-  json_schema <- as_json_schema(schema)
+  json_schema_obj <- as_json_schema(schema)
+  json_schema <- jsonlite::fromJSON(json_schema_obj@json_schema_str)
 
+  expect_s7_class(json_schema_obj, "JsonSchema")
   expect_type(json_schema, "list")
   expect_equal(json_schema$type, "object")
   expect_equal(json_schema$properties$name$type, "string")
@@ -26,8 +29,10 @@ test_that("as_json_schema handles arrays of atomic types", {
     tags = list("character"),
     numbers = list("integer")
   )
-  json_schema <- as_json_schema(schema)
+  json_schema_obj <- as_json_schema(schema)
+  json_schema <- jsonlite::fromJSON(json_schema_obj@json_schema_str)
 
+  expect_s7_class(json_schema_obj, "JsonSchema")
   expect_equal(json_schema$properties$tags$type, "array")
   expect_equal(json_schema$properties$tags$items$type, "string")
   expect_equal(json_schema$properties$numbers$type, "array")
@@ -44,8 +49,10 @@ test_that("as_json_schema handles nested objects", {
       )
     )
   )
-  json_schema <- as_json_schema(schema)
+  json_schema_obj <- as_json_schema(schema)
+  json_schema <- jsonlite::fromJSON(json_schema_obj@json_schema_str)
 
+  expect_s7_class(json_schema_obj, "JsonSchema")
   expect_equal(json_schema$properties$person$type, "object")
   expect_equal(json_schema$properties$person$properties$name$type, "string")
   expect_equal(json_schema$properties$person$properties$address$type, "object")
@@ -59,8 +66,10 @@ test_that("as_json_schema handles arrays of objects", {
       price = "numeric"
     ))
   )
-  json_schema <- as_json_schema(schema)
+  json_schema_obj <- as_json_schema(schema)
+  json_schema <- jsonlite::fromJSON(json_schema_obj@json_schema_str)
 
+  expect_s7_class(json_schema_obj, "JsonSchema")
   expect_equal(json_schema$properties$items$type, "array")
   expect_equal(json_schema$properties$items$items$type, "object")
   expect_equal(json_schema$properties$items$items$properties$name$type, "string")
@@ -71,24 +80,30 @@ test_that("as_json_schema handles enums", {
   schema <- list(
     status = c("draft", "published", "archived")
   )
-  json_schema <- as_json_schema(schema)
+  json_schema_obj <- as_json_schema(schema)
+  json_schema <- jsonlite::fromJSON(json_schema_obj@json_schema_str)
 
+  expect_s7_class(json_schema_obj, "JsonSchema")
   expect_equal(json_schema$properties$status$type, "string")
   expect_equal(json_schema$properties$status$enum, c("draft", "published", "archived"))
 })
 
 test_that("as_json_schema handles arrays of numeric", {
   schema <- list(scores = list("numeric"))
-  json_schema <- as_json_schema(schema)
+  json_schema_obj <- as_json_schema(schema)
+  json_schema <- jsonlite::fromJSON(json_schema_obj@json_schema_str)
 
+  expect_s7_class(json_schema_obj, "JsonSchema")
   expect_equal(json_schema$properties$scores$type, "array")
   expect_equal(json_schema$properties$scores$items$type, "number")
 })
 
 test_that("as_json_schema handles arrays of logical", {
   schema <- list(flags = list("logical"))
-  json_schema <- as_json_schema(schema)
+  json_schema_obj <- as_json_schema(schema)
+  json_schema <- jsonlite::fromJSON(json_schema_obj@json_schema_str)
 
+  expect_s7_class(json_schema_obj, "JsonSchema")
   expect_equal(json_schema$properties$flags$type, "array")
   expect_equal(json_schema$properties$flags$items$type, "boolean")
 })
@@ -187,18 +202,16 @@ test_that("format_validation_errors handles NULL errors", {
 
 test_that("validate_and_fix returns valid response immediately", {
   valid_json <- '{"title": "Test", "year": 2023}'
-  json_schema_str <- jsonlite::toJSON(list(
-    type = "object",
-    properties = list(
-      title = list(type = "string"),
-      year = list(type = "integer")
-    )
-  ), auto_unbox = TRUE)
+  schema_list <- list(
+    title = "character",
+    year = "integer"
+  )
+  json_schema_obj <- as_json_schema(schema_list)
 
   # This should succeed immediately without calling the LLM
   result <- validate_and_fix(
     initial_response = valid_json,
-    json_schema_str = json_schema_str,
+    json_schema_obj = json_schema_obj,
     text = "dummy",
     model = "dummy",
     strategy = "direct",
@@ -213,13 +226,12 @@ test_that("validate_and_fix returns valid response immediately", {
 
 test_that("validate_and_fix detects invalid JSON", {
   invalid_json <- '{"title": "Test", "year": "not_a_number"}'
-  json_schema_str <- jsonlite::toJSON(list(
-    type = "object",
-    properties = list(
-      title = list(type = "string"),
-      year = list(type = "integer")
-    )
-  ), auto_unbox = TRUE)
+  schema_list <- list(
+    title = "character",
+    year = "integer"
+  )
+  json_schema_obj <- as_json_schema(schema_list)
+  json_schema_str <- json_schema_obj@json_schema_str
 
   # Should fail validation - we test that it fails, not the retry mechanism
   is_valid <- jsonvalidate::json_validate(invalid_json, json_schema_str, engine = "ajv")
@@ -244,8 +256,8 @@ test_that("complex nested schema validates correctly", {
     status = c("draft", "published")
   )
 
-  json_schema <- as_json_schema(schema)
-  json_schema_str <- jsonlite::toJSON(json_schema, auto_unbox = TRUE, pretty = TRUE)
+  json_schema_obj <- as_json_schema(schema)
+  json_schema_str <- json_schema_obj@json_schema_str
 
   # Valid JSON
   valid_json <- '{
@@ -270,8 +282,8 @@ test_that("schema validation catches type mismatches", {
     score = "numeric"
   )
 
-  json_schema <- as_json_schema(schema)
-  json_schema_str <- jsonlite::toJSON(json_schema, auto_unbox = TRUE)
+  json_schema_obj <- as_json_schema(schema)
+  json_schema_str <- json_schema_obj@json_schema_str
 
   # Invalid: age is string instead of integer
   invalid_json <- '{"age": "thirty", "score": 85.5}'
@@ -286,8 +298,8 @@ test_that("schema validation catches missing required fields", {
     age = "integer"
   )
 
-  json_schema <- as_json_schema(schema)
-  json_schema_str <- jsonlite::toJSON(json_schema, auto_unbox = TRUE)
+  json_schema_obj <- as_json_schema(schema)
+  json_schema_str <- json_schema_obj@json_schema_str
 
   # Missing 'age' field
   invalid_json <- '{"name": "John"}'
@@ -301,9 +313,8 @@ test_that("schema validation catches enum violations", {
     status = c("active", "inactive", "pending")
   )
 
-  json_schema <- as_json_schema(schema)
-  # Don't use auto_unbox for single-element arrays like 'required'
-  json_schema_str <- jsonlite::toJSON(json_schema, pretty = TRUE)
+  json_schema_obj <- as_json_schema(schema)
+  json_schema_str <- json_schema_obj@json_schema_str
 
   # Invalid enum value
   invalid_json <- '{"status": "completed"}'
