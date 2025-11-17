@@ -1,14 +1,10 @@
-Package: extractoR
+Package: instructoR
 Title: Self-Correcting Structured Extraction with LLMs in R
 Version: 0.1.0
 Authors@R:
-    person("Skander Tahar", "Mulder", , email = "your.email@example.com", role = c("aut", "cre"))
-Author: Skander Tahar Mulder <your.email@example.com>
-Maintainer: Skander Tahar Mulder <your.email@example.com>
-Description: Like Python's 'instructor' or 'outlines'. Automatically retries LLM calls
-    with validation feedback until output matches your schema. Uses ellmer for LLM
-    interface and jsonvalidate for schema validation.
-License: MIT + file LICENSE
+    person("Skander Tahar Mulder", email = "Skandermulder@gmail.com", role = c("aut", "cre"))
+Description: Like Python's 'instructor' or 'outlines'. Automatically retries LLM calls with validation feedback until output matches your schema.
+License: MIT
 Depends:
     R (>= 4.1)
 Imports:
@@ -16,14 +12,14 @@ Imports:
   jsonlite,
   jsonvalidate,
   cli,
+  rlang,
+  withr,
   glue
 Suggests:
   testthat (>= 3.0.0),
   covr,
   spelling,
-  usethis,
-  withr,
-  rlang
+  usethis
 LazyData: true
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)

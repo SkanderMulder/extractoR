@@ -1,15 +1,2 @@
-Extract structured information from the following text as JSON.
-
-You MUST respond with valid JSON that conforms EXACTLY to this JSON Schema:
-{json_schema}
-
-Rules:
-- Do not add extra fields
-- Do not wrap in markdown
-- Do not add explanations
-- Output raw JSON only
-
-Text:
-{text}
-
-Valid JSON:
+This file is a placeholder for extraction prompts.
+It can be used to store templates or examples for LLM extraction tasks.

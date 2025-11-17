@@ -1,281 +1,207 @@
 library(testthat)
 library(instructoR)
-library(jsonlite)
-library(jsonvalidate)
-library(withr)
-library(ellmer) # For mocking
 
-# Mock ellmer::chat for testing purposes
-mock_ellmer_chat <- function(model, system = NULL, turns, temperature) {
-  # This mock function will return different responses based on the prompt
-  # For simplicity, let's assume the first call is always invalid, and the second is valid
-  # In a real scenario, you might inspect 'turns' to decide the response
-  
-  last_user_message <- turns[[length(turns)]]$content
-
-  if (grepl("FIX THIS JSON", last_user_message) || grepl("You previously failed", last_user_message)) {
-    # This is a retry call, return valid JSON
-    return(list(content = '{"name": "Valid Name", "age": 30}'))
-  } else {
-    # This is the initial call, return invalid JSON
-    return(list(content = '{"name": "Invalid Name", "age": "thirty"}'))
-  }
-}
-
-# Test as_json_schema
-test_that("as_json_schema converts R list to JSON Schema correctly", {
+test_that("as_json_schema converts basic types correctly", {
   schema <- list(
     name = "character",
     age = "integer",
-    topics = list("character"),
-    metadata = list(
-      created = "character",
-      updated = "character"
-    )
+    is_active = "logical",
+    score = "numeric"
   )
-  json_schema_str <- as_json_schema(schema)
-  json_schema <- fromJSON(json_schema_str)
+  json_schema <- as_json_schema(schema)
 
+  expect_type(json_schema, "list")
   expect_equal(json_schema$type, "object")
   expect_equal(json_schema$properties$name$type, "string")
   expect_equal(json_schema$properties$age$type, "integer")
-  expect_equal(json_schema$properties$topics$type, "array")
-  expect_equal(json_schema$properties$topics$items$type, "string")
-  expect_equal(json_schema$properties$metadata$type, "object")
-  expect_true("name" %in% json_schema$required)
-  expect_true("created" %in% json_schema$properties$metadata$required)
+  expect_equal(json_schema$properties$is_active$type, "boolean")
+  expect_equal(json_schema$properties$score$type, "number")
+  expect_equal(json_schema$required, c("name", "age", "is_active", "score") )
 })
 
-test_that("as_json_schema handles enum types", {
+test_that("as_json_schema handles arrays of atomic types", {
   schema <- list(
-    sentiment = c("positive", "negative", "neutral")
+    tags = list("character"),
+    numbers = list("integer")
   )
-  json_schema_str <- as_json_schema(schema)
-  json_schema <- fromJSON(json_schema_str)
+  json_schema <- as_json_schema(schema)
 
-  expect_equal(json_schema$properties$sentiment$type, "string")
-  expect_equal(json_schema$properties$sentiment$enum, c("positive", "negative", "neutral"))
+  expect_equal(json_schema$properties$tags$type, "array")
+  expect_equal(json_schema$properties$tags$items$type, "string")
+  expect_equal(json_schema$properties$numbers$type, "array")
+  expect_equal(json_schema$properties$numbers$items$type, "integer")
 })
 
-# Test format_validation_errors
-test_that("format_validation_errors formats errors correctly", {
-  errors_df <- data.frame(
-    instancePath = c("/age", "/name"),
-    schemaPath = c("#/properties/age/type", "#/properties/name/type"),
-    keyword = c("type", "type"),
-    message = c("expected integer, got string", "expected string, got number"),
-    params = c("integer", "string"),
-    schema = c("integer", "string"),
-    data = c("thirty", "123"),
-    stringsAsFactors = FALSE
-  )
-  
-  # Simulate the structure returned by jsonvalidate::json_validate(error = TRUE)
-  errors_attr <- list(
-    list(instancePath = "/age", message = "expected integer, got string", schemaPath = "#/properties/age/type"),
-    list(instancePath = "/name", message = "expected string, got number", schemaPath = "#/properties/name/type")
-  )
-  attr(errors_df, "errors") <- errors_attr
-
-  formatted_errors <- format_validation_errors(attr(errors_df, "errors"))
-  expect_true(grepl("- expected integer, got string at '/age'", formatted_errors))
-  expect_true(grepl("- expected string, got number at '/name'", formatted_errors))
-})
-
-# Test clean_json_response
-test_that("clean_json_response removes markdown and trims whitespace", {
-  response_md <- "```json\n{\"key\": \"value\"}\n```"
-  response_plain <- "  {\"key\": \"value\"}  "
-  response_mixed <- "```\n{\"key\": \"value\"}\n```"
-
-  expect_equal(clean_json_response(response_md), '{"key": "value"}')
-  expect_equal(clean_json_response(response_plain), '{"key": "value"}')
-  expect_equal(clean_json_response(response_mixed), '{"key": "value"}')
-})
-
-# Test extract_content
-test_that("extract_content extracts content from ellmer results", {
-  # ellmer::chat returns a list with a 'content' element
-  result1 <- list(content = "Hello")
-  expect_equal(extract_content(result1), "Hello")
-
-  # ellmer::chat might return a list with choices (e.g., OpenAI API)
-  result2 <- list(
-    choices = list(
-      list(
-        message = list(content = "World")
+test_that("as_json_schema handles nested objects", {
+  schema <- list(
+    person = list(
+      name = "character",
+      address = list(
+        street = "character",
+        zip = "integer"
       )
     )
   )
-  expect_equal(extract_content(result2), "World")
+  json_schema <- as_json_schema(schema)
 
-  # ellmer::chat might return a simple character string
-  result3 <- "Simple string"
-  expect_equal(extract_content(result3), "Simple string")
-
-  # Test for error when content cannot be extracted
-  result_bad <- list(foo = "bar")
-  expect_error(extract_content(result_bad), "Unable to extract content from LLM response")
+  expect_equal(json_schema$properties$person$type, "object")
+  expect_equal(json_schema$properties$person$properties$name$type, "string")
+  expect_equal(json_schema$properties$person$properties$address$type, "object")
+  expect_equal(json_schema$properties$person$properties$address$properties$street$type, "string")
+  expect_equal(json_schema$properties$person$properties$address$properties$zip$type, "integer")
 })
 
-# Test build_extraction_prompt
-test_that("build_extraction_prompt creates correct prompt", {
-  text <- "Some text."
-  json_schema <- '{"type": "object"}'
-  prompt <- build_extraction_prompt(text, json_schema)
+test_that("as_json_schema handles arrays of objects", {
+  schema <- list(
+    entities = list(list(name = "character", type = "character"))
+  )
+  json_schema <- as_json_schema(schema)
+
+  expect_equal(json_schema$properties$entities$type, "array")
+  expect_equal(json_schema$properties$entities$items$type, "object")
+  expect_equal(json_schema$properties$entities$items$properties$name$type, "string")
+  expect_equal(json_schema$properties$entities$items$properties$type$type, "string")
+})
+
+test_that("as_json_schema handles enums", {
+  schema <- list(
+    sentiment = c("positive", "negative", "neutral")
+  )
+  json_schema <- as_json_schema(schema)
+
+  expect_equal(json_schema$properties$sentiment$type, "string")
+  expect_equal(json_schema$properties$sentiment$enum, c("positive", "negative", "neutral") )
+})
+
+test_that("build_extraction_prompt creates correct prompt structure", {
+  text <- "Some sample text."
+  json_schema_str <- '{"type": "object", "properties": {"key": {"type": "string"}}}'
+  prompt <- build_extraction_prompt(text, json_schema_str)
 
   expect_true(grepl("Extract structured information from the following text as JSON.", prompt))
   expect_true(grepl("You MUST respond with valid JSON that conforms EXACTLY to this JSON Schema:", prompt))
-  expect_true(grepl('{"type": "object"}', prompt))
-  expect_true(grepl("Text:\nSome text.", prompt))
-  expect_true(grepl("Output raw JSON only", prompt))
+  expect_true(grepl(json_schema_str, prompt))
+  expect_true(grepl("Text:\n    Some sample text.", prompt))
+  expect_true(grepl("Valid JSON:", prompt))
 })
 
-# Test build_correction_prompt
-test_that("build_correction_prompt creates correct prompt for reflect strategy", {
-  text <- "Some text."
-  json_schema <- '{"type": "object"}'
-  error_summary <- "Error: Invalid type."
-  prompt <- build_correction_prompt(text, json_schema, error_summary, strategy = "reflect")
-
-  expect_true(grepl("You previously failed to produce valid JSON.", prompt))
-  expect_true(grepl("Here is the validation error:\nError: Invalid type.", prompt))
-  expect_true(grepl("Think step-by-step:", prompt))
-  expect_true(grepl("Now output ONLY the corrected JSON.", prompt))
-  expect_true(grepl("Text: Some text.", prompt))
-  expect_true(grepl('Schema: {"type": "object"}', prompt))
+test_that("format_validation_errors handles single error", {
+  errors <- list(list(message = "Error 1", dataPath = ".field", schemaPath = "#/properties/field"))
+  formatted <- format_validation_errors(errors)
+  expect_true(grepl("- Error 1 (Path: .field, Schema: #/properties/field)", formatted))
 })
 
-test_that("build_correction_prompt creates correct prompt for direct strategy", {
-  text <- "Some text."
-  json_schema <- '{"type": "object"}'
-  error_summary <- "Error: Invalid type."
-  prompt <- build_correction_prompt(text, json_schema, error_summary, strategy = "direct")
-
-  expect_true(grepl("FIX THIS JSON. Errors:\nError: Invalid type.", prompt))
-  expect_true(grepl("Correct JSON only:", prompt))
-})
-
-test_that("build_correction_prompt creates correct prompt for polite strategy", {
-  text <- "Some text."
-  json_schema <- '{"type": "object"}'
-  error_summary <- "Error: Invalid type."
-  prompt <- build_correction_prompt(text, json_schema, error_summary, strategy = "polite")
-
-  expect_true(grepl("Please fix the following validation errors and respond with valid JSON only:", prompt))
-  expect_true(grepl("Expected schema:\n", prompt))
-  expect_true(grepl('{"type": "object"}', prompt))
-})
-
-# Test validate_and_fix
-test_that("validate_and_fix retries and returns valid JSON", {
-  # Temporarily replace ellmer::chat with our mock
-  with_mocked_bindings(
-    ellmer::chat = mock_ellmer_chat,
-    .package = "ellmer", # Specify the package where ellmer::chat is defined
-    {
-      initial_response_invalid <- '{"name": "Invalid Name", "age": "thirty"}'
-      json_schema_str <- as_json_schema(list(name = "character", age = "integer"))
-      
-      result <- validate_and_fix(
-        initial_response = initial_response_invalid,
-        json_schema_str = json_schema_str,
-        text = "Some text",
-        model = "mock-model",
-        max_retries = 2,
-        .progress = FALSE
-      )
-      
-      expect_type(result, "list")
-      expect_equal(result$name, "Valid Name")
-      expect_equal(result$age, 30)
-    }
+test_that("format_validation_errors handles multiple errors", {
+  errors <- list(
+    list(message = "Error 1", dataPath = ".field1", schemaPath = "#/properties/field1"),
+    list(message = "Error 2", dataPath = ".field2", schemaPath = "#/properties/field2")
   )
+  formatted <- format_validation_errors(errors)
+  expect_true(grepl("- Error 1", formatted))
+  expect_true(grepl("- Error 2", formatted))
+  expect_true(grepl("\n", formatted)) # Check for line breaks between errors
 })
 
-test_that("validate_and_fix stops after max_retries if still invalid", {
-  # Temporarily replace ellmer::chat with a mock that always returns invalid JSON
-  with_mocked_bindings(
-    ellmer::chat = function(...) {
-      list(content = '{"name": "Still Invalid", "age": "not-a-number"}')
-    },
-    .package = "ellmer",
-    {
-      initial_response_invalid <- '{"name": "Invalid Name", "age": "thirty"}'
-      json_schema_str <- as_json_schema(list(name = "character", age = "integer"))
-      
-      expect_error(
-        validate_and_fix(
-          initial_response = initial_response_invalid,
-          json_schema_str = json_schema_str,
-          text = "Some text",
-          model = "mock-model",
-          max_retries = 1, # Only one retry allowed
-          .progress = FALSE
-        ),
-        "Failed to extract valid structure after 1 attempts"
-      )
-    }
-  )
-})
+# Mock ellmer::chat for testing extract and validate_and_fix without actual API calls
+mock_chat_success <- function(...) {
+  list(content = '{"title": "Test Title", "year": 2023, "topics": ["R", "Testing"], "is_open_access": true}')
+}
 
-# Test extract (integration test with mock)
-test_that("extract function works end-to-end with mocking", {
-  # Temporarily replace ellmer::chat with our mock
-  with_mocked_bindings(
-    ellmer::chat = mock_ellmer_chat,
-    .package = "ellmer",
-    {
-      schema <- list(name = "character", age = "integer")
-      text <- "John Doe is 30 years old."
-      
-      result <- extract(
-        text = text,
-        schema = schema,
-        model = "mock-model",
-        max_retries = 2,
-        .progress = FALSE
-      )
-      
-      expect_type(result, "list")
-      expect_equal(result$name, "Valid Name")
-      expect_equal(result$age, 30)
-    }
-  )
-})
+mock_chat_fail_then_success <- function(...) {
+  args <- list(...)
+  messages <- args$messages
+  last_message <- messages[[length(messages)]]$content
 
-# Test extract with Ollama model string
-test_that("extract function works with Ollama model string", {
-  # Mock ellmer::chat to check if the model string is passed correctly
-  mock_ellmer_chat_ollama <- function(model, system, turns, temperature) {
-    # Check if the model string is as expected
-    expect_equal(model, "ollama/gemma:2b")
-    
-    # Return a valid response
-    return(list(content = '{"sentiment": "negative", "features": [{"name": "battery life", "rating": "bad"}]}'))
+  if (grepl("FIX THIS JSON", last_message) || grepl("You previously failed", last_message)) {
+    # Second attempt, return valid JSON
+    list(content = '{"title": "Corrected Title", "year": 2024, "topics": ["Corrected"], "is_open_access": false}')
+  } else {
+    # First attempt, return invalid JSON
+    list(content = '{"title": "Invalid", "year": "not_a_number"}')
   }
-  
+}
+
+test_that("extract works with valid initial response", {
+  # Temporarily mock ellmer::chat
   with_mocked_bindings(
-    ellmer::chat = mock_ellmer_chat_ollama,
+    chat = mock_chat_success,
     .package = "ellmer",
     {
       schema <- list(
-        sentiment = c("positive", "negative", "neutral"),
-        features = list(list(name = "character", rating = c("good", "bad", "average")))
+        title = "character",
+        year = "integer",
+        topics = list("character"),
+        is_open_access = "logical"
       )
-      text <- "The new phone has a great camera, but the battery life is poor."
-      
       result <- extract(
-        text = text,
+        text = "Some text",
         schema = schema,
-        model = "ollama/gemma:2b",
+        model = "mock-model",
+        max_retries = 1,
         .progress = FALSE
       )
-      
-      expect_type(result, "list")
-      expect_equal(result$sentiment, "negative")
-      expect_equal(result$features[[1]]$name, "battery life")
-      expect_equal(result$features[[1]]$rating, "bad")
+      expect_equal(result$title, "Test Title")
+      expect_equal(result$year, 2023)
+      expect_equal(result$topics, c("R", "Testing") )
+      expect_equal(result$is_open_access, TRUE)
+      expect_equal(attr(result, "attempts"), 1)
+    }
+  )
+})
+
+test_that("extract retries and fixes malformed JSON", {
+  # Temporarily mock ellmer::chat
+  with_mocked_bindings(
+    chat = mock_chat_fail_then_success,
+    .package = "ellmer",
+    {
+      schema <- list(
+        title = "character",
+        year = "integer",
+        topics = list("character"),
+        is_open_access = "logical"
+      )
+      result <- extract(
+        text = "Some text",
+        schema = schema,
+        model = "mock-model",
+        max_retries = 2,
+        strategy = "direct",
+        .progress = FALSE
+      )
+      expect_equal(result$title, "Corrected Title")
+      expect_equal(result$year, 2024)
+      expect_equal(attr(result, "attempts"), 2)
+    }
+  )
+})
+
+test_that("extract stops and errors after max_retries", {
+  # Temporarily mock ellmer::chat to always return invalid JSON
+  mock_chat_always_fail <- function(...) {
+    list(content = '{"title": "Invalid", "year": "not_a_number"}')
+  }
+
+  with_mocked_bindings(
+    chat = mock_chat_always_fail,
+    .package = "ellmer",
+    {
+      schema <- list(
+        title = "character",
+        year = "integer",
+        topics = list("character"),
+        is_open_access = "logical"
+      )
+      expect_error(
+        extract(
+          text = "Some text",
+          schema = schema,
+          model = "mock-model",
+          max_retries = 1,
+          .progress = FALSE
+        ),
+        "Failed to extract valid structure after 1 attempts."
+      )
     }
   )
 })

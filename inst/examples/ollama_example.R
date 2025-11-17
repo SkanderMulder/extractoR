@@ -1,11 +1,11 @@
-# Example of using extractoR with a local Ollama model
+# Example of using instructoR with a local Ollama model
 #
 # This script demonstrates how to use the `extract()` function from the
-# `extractoR` package to extract structured information from text using a
+# `instructoR` package to extract structured information from text using a
 # local model served by Ollama.
 #
 # Prerequisites:
-# 1. Make sure you have installed the `extractoR` package.
+# 1. Make sure you have installed the `instructoR` package.
 #    - You can install it from the local source:
 #      # devtools::install(".")
 #
@@ -16,8 +16,8 @@
 #    - For example, to pull the 'gemma:2b' model, run in your terminal:
 #      # ollama pull gemma:2b
 
-# Load the extractoR package
-library(extractoR)
+# Load the instructoR package
+library(instructoR)
 
 # 1. Define the text you want to extract from
 article_text <- "The new smartphone was released in 2024. It has a great camera and a long-lasting battery. However, some users have reported that the screen is easily scratched."
@@ -37,10 +37,9 @@ my_schema <- list(
 # 3. Call the extract() function with your local Ollama model
 #    - Replace "ollama/gemma:2b" with the Ollama model you want to use.
 #    - The format is "ollama/<model_name>:<tag>"
-#    - The ellmer package, used by extractoR, will automatically connect to
+#    - The ellmer package, used by instructoR, will automatically connect to
 #      your local Ollama server (by default at http://localhost:11434).
-catalyst("--- Calling local Ollama model for extraction ---
-")
+cat("--- Calling local Ollama model for extraction ---\n")
 result <- tryCatch({
   extract(
     text = article_text,
@@ -49,19 +48,15 @@ result <- tryCatch({
     .progress = TRUE
   )
 }, error = function(e) {
-  catalyst("\n--- ERROR ---
-")
-  catalyst("Failed to connect to Ollama or extract information.
-")
-  catalyst("Please ensure your Ollama server is running and you have pulled the model.
-")
-  catalyst("Error message:", e$message, "\n")
+  cat("\n--- ERROR ---\n")
+  cat("Failed to connect to Ollama or extract information.\n")
+  cat("Please ensure your Ollama server is running and you have pulled the model.\n")
+  cat("Error message:", e$message, "\n")
   NULL
 })
 
 # 4. Print the result
 if (!is.null(result)) {
-  catalyst("\n--- Extraction successful! ---
-")
+  cat("\n--- Extraction successful! ---\n")
   str(result)
 }

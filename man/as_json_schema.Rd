@@ -2,37 +2,42 @@
 % Please edit documentation in R/schema.R
 \name{as_json_schema}
 \alias{as_json_schema}
-\title{Convert R list schema to JSON Schema}
+\title{Convert R List to JSON Schema}
 \usage{
-as_json_schema(schema, required = TRUE)
+as_json_schema(schema)
 }
 \arguments{
-\item{schema}{A list describing the expected structure. Use strings for simple
-types ("character", "integer", "numeric", "logical"), lists for arrays
-(e.g., list("character")), and nested lists for objects.}
-
-\item{required}{Logical indicating if all properties should be required. Default TRUE.}
+\item{schema}{An R list representing the desired output structure.
+\itemize{
+\item Atomic types: Use character strings like "character", "integer", "numeric", "logical".
+\item Arrays: Use \code{list("character")} for an array of strings, \code{list(list(name = "character"))} for an array of objects.
+\item Nested objects: Use nested lists.
+}}
 }
 \value{
-A JSON Schema string
+A list representing the JSON Schema.
 }
 \description{
-Converts a simple R list specification into a proper JSON Schema object that
-can be used for validation. Supports basic types (character, integer, numeric,
-logical) and nested structures (lists, arrays).
+Converts a simple R list schema definition into a proper JSON Schema object.
+This function supports basic R types like "character", "integer", "numeric",
+"logical", and nested lists for complex objects or arrays.
 }
 \examples{
-\dontrun{
-schema <- list(
-  name = "character",
-  age = "integer",
-  tags = list("character"),
-  metadata = list(
-    created = "character",
-    updated = "character"
+as_json_schema(list(
+  title = "character",
+  year = "integer",
+  topics = list("character"),
+  is_open_access = "logical",
+  details = list(
+    publisher = "character",
+    pages = "integer"
   )
-)
-json_schema <- as_json_schema(schema)
-}
+))
 
+as_json_schema(list(
+  sentiment = c("positive", "negative", "neutral"),
+  confidence = "numeric",
+  keywords = list("character"),
+  entities = list(list(name = "character", type = "character"))
+))
 }

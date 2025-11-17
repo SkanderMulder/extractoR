@@ -1,57 +1,56 @@
-#' Extract structured information from text using LLMs
+#' @title Extract Structured Information from Text using LLMs
 #'
-#' This is the main function to extract structured information from unstructured
-#' text using a Large Language Model (LLM) and a user-defined schema. It
-#' includes an automatic self-correction loop to ensure the output conforms
-#' to the schema.
+#' @description
+#' Main user function to extract structured information from unstructured text
+#' using Large Language Models (LLMs) with automatic self-correction.
 #'
-#' @param text A character string containing the unstructured text to extract from.
+#' @param text The input text from which to extract information.
 #' @param schema A list defining the desired output structure. This will be
 #'   converted into a JSON Schema for validation.
-#'   Example: `list(title = "character", year = "integer", topics = list("character"))`
-#' @param model A character string specifying the LLM to use (e.g., "gpt-4o-mini").
-#' @param max_retries An integer specifying the maximum number of retry attempts
-#'   if the LLM initially returns malformed JSON.
-#' @param strategy A character string specifying the retry strategy:
-#'   "reflect" (default, provides detailed feedback to the LLM),
-#'   "direct" (sends only errors), or "polite" (a softer request for correction).
-#' @param temperature A numeric value for the LLM's temperature (0.0 to 1.0).
-#'   Lower values make the output more deterministic.
-#' @param .progress A logical value indicating whether to show progress messages.
+#' @param model The LLM model to use for extraction (e.g., "gpt-4o-mini").
+#' @param max_retries The maximum number of times to retry the LLM call with
+#'   validation feedback if the initial response is malformed.
+#' @param strategy The self-correction strategy to use: "reflect", "direct", or "polite".
+#' @param temperature The sampling temperature for the LLM. A value of 0.0
+#'   encourages deterministic output.
+#' @param .progress Logical, whether to show progress feedback using `cli`.
 #'
-#' @return A list containing the extracted and validated information, conforming
-#'   to the specified schema.
+#' @return A list with the extracted information, guaranteed to conform to the
+#'   provided schema.
 #' @export
 #'
 #' @examples
 #' \dontrun{
-#'   # Assuming you have an ellmer API key set up
-#'   # Sys.setenv(ELLMER_API_KEY = "YOUR_API_KEY")
+#' # Example usage (requires an LLM API key configured for ellmer)
+#' # Sys.setenv(ELLMER_API_KEY = "YOUR_API_KEY")
 #'
-#'   article_text <- "The quick brown fox jumps over the lazy dog. This is a test article from 2023."
-#'   my_schema <- list(
-#'     main_subject = "character",
-#'     year_published = "integer",
-#'     keywords = list("character")
-#'   )
+#' schema <- list(
+#'   title = "character",
+#'   year = "integer",
+#'   topics = list("character"),
+#'   is_open_access = "logical"
+#' )
 #'
-#'   result <- extract(
-#'     text = article_text,
-#'     schema = my_schema,
-#'     model = "gpt-4o-mini"
-#'   )
+#' article_text <- "The paper 'Large Language Models Are Zero-Shot Reasoners'
+#'   was published in 2022. It covers topics like natural language processing
+#'   and artificial intelligence. It is an open-access publication."
 #'
-#'   str(result)
+#' result <- extract(
+#'   text = article_text,
+#'   schema = schema,
+#'   model = "gpt-4o-mini",
+#'   .progress = FALSE # Set to TRUE to see progress
+#' )
 #'
-#'   # Example with Ollama (make sure Ollama is running)
-#'   # result_ollama <- extract(
-#'   #   text = "The new phone has a great camera, but the battery life is poor.",
-#'   #   schema = list(
-#'   #     sentiment = c("positive", "negative", "neutral"),
-#'   #     features = list(list(name = "character", rating = c("good", "bad", "average")))
-#'   #   ),
-#'   #   model = "ollama/gemma:2b"
-#'   # )
+#' str(result)
+#' # Should return a list like:
+#' # List of 4
+#' #  $ title         : chr "Large Language Models Are Zero-Shot Reasoners"
+#' #  $ year          : int 2022
+#' #  $ topics        : List of 2
+#' #   ..$ : chr "natural language processing"
+#' #   ..$ : chr "artificial intelligence"
+#' #  $ is_open_access: logi TRUE
 #' }
 extract <- function(text,
                     schema,
@@ -60,76 +59,49 @@ extract <- function(text,
                     strategy = c("reflect", "direct", "polite"),
                     temperature = 0.0,
                     .progress = TRUE) {
-  # Validate strategy argument
   strategy <- match.arg(strategy)
 
-  if (!requireNamespace("ellmer", quietly = TRUE)) {
-    stop("Package 'ellmer' is required but not installed. Please install it.", call. = FALSE)
-  }
-  if (!requireNamespace("jsonlite", quietly = TRUE)) {
-    stop("Package 'jsonlite' is required but not installed. Please install it.", call. = FALSE)
-  }
-  if (!requireNamespace("jsonvalidate", quietly = TRUE)) {
-    stop("Package 'jsonvalidate' is required but not installed. Please install it.", call. = FALSE)
-  }
-  if (!requireNamespace("cli", quietly = TRUE)) {
-    stop("Package 'cli' is required but not installed. Please install it.", call. = FALSE)
-  }
-  if (!requireNamespace("glue", quietly = TRUE)) {
-    stop("Package 'glue' is required but not installed. Please install it.", call. = FALSE)
-  }
+  # 1. Convert R schema to JSON Schema
+  json_schema <- as_json_schema(schema)
+  json_schema_str <- jsonlite::toJSON(json_schema, auto_unbox = TRUE, pretty = TRUE)
 
-  if (.progress) {
-    cli::cli_h1("Starting instructoR extraction")
-    cli::cli_alert_info("Converting R schema to JSON Schema...")
-  }
-
-  # Convert R schema to JSON Schema string
-  json_schema_str <- as_json_schema(schema)
-
-  if (.progress) {
-    cli::cli_alert_info("Building initial extraction prompt...")
-  }
-
-  # Build initial prompt
+  # 2. Build initial extraction prompt
   initial_prompt <- build_extraction_prompt(text, json_schema_str)
 
   if (.progress) {
-    cli::cli_alert_info("Calling LLM for initial extraction (model: {model})...")
+    cli::cli_h1("Starting Extraction")
+    cli::cli_alert_info("Model: {model}")
+    cli::cli_alert_info("Max retries: {max_retries}")
+    cli::cli_alert_info("Strategy: {strategy}")
+    cli::cli_alert_info("Schema: {json_schema_str}")
+    cli::cli_alert_info("Sending initial request to LLM...")
   }
 
-  # Initial LLM call
-  initial_response <- tryCatch({
-    result <- ellmer::chat(
-      model = model,
-      system = "You are a helpful assistant that outputs valid JSON.",
-      turns = list(list(role = "user", content = initial_prompt)),
-      temperature = temperature
-    )
-    extract_content(result)
-  }, error = function(e) {
-    stop("Initial LLM call failed: ", e$message, call. = FALSE)
-  })
+  # 3. Initial LLM call
+  initial_response <- ellmer::chat(
+    model = model,
+    messages = list(list(role = "user", content = initial_prompt)),
+    temperature = temperature
+  )$content
 
   if (.progress) {
-    cli::cli_alert_info("Validating and potentially fixing LLM response...")
+    cli::cli_alert_info("Received initial response. Validating...")
   }
 
-  # Validate and fix
-  final_result <- validate_and_fix(
+  # 4. Validate and fix loop
+  result <- validate_and_fix(
     initial_response = initial_response,
     json_schema_str = json_schema_str,
     text = text,
     model = model,
     strategy = strategy,
     max_retries = max_retries,
-    temperature = temperature,
     .progress = .progress
   )
 
   if (.progress) {
-    cli::cli_alert_success("Extraction complete!")
+    cli::cli_alert_success("Extraction successful after {attr(result, 'attempts')} attempts.")
   }
 
-  return(final_result)
+  result
 }

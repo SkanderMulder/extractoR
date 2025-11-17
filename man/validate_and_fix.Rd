@@ -2,41 +2,39 @@
 % Please edit documentation in R/validate.R
 \name{validate_and_fix}
 \alias{validate_and_fix}
-\title{Validate and fix LLM response with retry loop}
+\title{Validate and Fix LLM JSON Response}
 \usage{
 validate_and_fix(
   initial_response,
   json_schema_str,
   text,
   model,
-  strategy = "reflect",
-  max_retries = 5,
-  temperature = 0,
+  strategy,
+  max_retries,
   .progress = TRUE
 )
 }
 \arguments{
-\item{initial_response}{The initial response from the LLM}
+\item{initial_response}{The initial JSON string response from the LLM.}
 
-\item{json_schema_str}{JSON Schema as a string}
+\item{json_schema_str}{The JSON schema as a string.}
 
-\item{text}{Original text being processed}
+\item{text}{The original input text that was sent to the LLM.}
 
-\item{model}{Model identifier for ellmer}
+\item{model}{The LLM model being used.}
 
-\item{strategy}{Retry strategy: "reflect", "direct", or "polite"}
+\item{strategy}{The self-correction strategy ("reflect", "direct", "polite").}
 
-\item{max_retries}{Maximum number of retry attempts}
+\item{max_retries}{The maximum number of retry attempts.}
 
-\item{temperature}{Temperature for LLM calls}
-
-\item{.progress}{Show progress messages}
+\item{.progress}{Logical, whether to show progress feedback using \code{cli}.}
 }
 \value{
-Parsed JSON as an R list
+A list representing the valid JSON response, or an error if validation
+fails after \code{max_retries}.
 }
 \description{
-Attempts to validate an LLM response against a JSON Schema. If validation
-fails, retries with error feedback until successful or max retries reached.
+Internal function to validate an LLM's JSON response against a JSON schema
+and, if invalid, generate feedback for the LLM to self-correct.
 }
 \keyword{internal}
