@@ -1,4 +1,4 @@
-# instructoR 0.1.0
+# extractoR 0.1.0
 
 ## Initial Release
 

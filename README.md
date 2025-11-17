@@ -1,7 +1,7 @@
 
 <!-- README.md is generated from README.Rmd. Please edit that file -->
 
-# instructoR <img src="man/figures/logo.png" align="right" height="139" alt="instructoR logo" />
+# extractoR <img src="man/figures/logo.png" align="right" height="139" alt="extractoR logo" />
 
 <!-- badges: start -->
 
@@ -10,13 +10,13 @@
 experimental](https://img.shields.io/badge/lifecycle-experimental-orange.svg)](https://lifecycle.r-lib.org/articles/stages.html#experimental)
 [![License:
 MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
-[![R-Universe](https://skandermulder.r-universe.dev/badges/instructoR)](https://skandermulder.r-universe.dev/instructoR)
+[![R-Universe](https://skandermulder.r-universe.dev/badges/extractoR)](https://skandermulder.r-universe.dev/extractoR)
 <!-- badges: end -->
 
 > **Self-Correcting Structured Data Extraction from Text Using Large
 > Language Models**
 
-**instructoR** is an R package that automatically validates and corrects
+**extractoR** is an R package that automatically validates and corrects
 LLM outputs against your schema. Inspired by Python’s
 [instructor](https://github.com/jxnl/instructor) and
 [outlines](https://github.com/outlines-dev/outlines), it eliminates the
@@ -26,7 +26,7 @@ self-correction.
 **Stop fighting with LLM outputs. Get guaranteed valid data or
 controlled failure.**
 
-## Why instructoR?
+## Why extractoR?
 
 When working with LLMs for data extraction, you typically face:
 
@@ -35,7 +35,7 @@ When working with LLMs for data extraction, you typically face:
   - **Manual retry logic** with hacky error handling
   - **Unreliable parsing** that fails in production
 
-instructoR solves this by:
+extractoR solves this by:
 
 1.  Converting R schemas to JSON Schema automatically
 2.  Validating LLM responses against your schema
@@ -83,7 +83,7 @@ devtools::install_github("SkanderMulder/extractoR")
 ### From R-Universe
 
 ``` r
-install.packages("instructoR", repos = "https://skandermulder.r-universe.dev")
+install.packages("extractoR", repos = "https://skandermulder.r-universe.dev")
 ```
 
 -----
@@ -95,7 +95,7 @@ install.packages("instructoR", repos = "https://skandermulder.r-universe.dev")
 Extract structured data from unstructured text in just a few lines:
 
 ``` r
-library(instructoR)
+library(extractoR)
 
 # Define what you want to extract
 schema <- list(
@@ -149,7 +149,7 @@ See `inst/examples/ollama_example.R` for a complete working example.
 
 ### Schema Definition
 
-instructoR uses intuitive R syntax for schema definition:
+extractoR uses intuitive R syntax for schema definition:
 
 Choose how the LLM receives feedback:
 
@@ -216,7 +216,7 @@ extract(text, schema, .progress = TRUE)
 
 ## Use Cases
 
-instructoR excels at extracting structured information from various
+extractoR excels at extracting structured information from various
 domains:
 
 ## Real-World Examples
@@ -280,7 +280,7 @@ extract(clinical_note, clinical_schema, model = "gpt-4o-mini")
 
 ## How It Works
 
-instructoR implements a validation-correction loop:
+extractoR implements a validation-correction loop:
 
 ``` mermaid
 graph LR
@@ -305,7 +305,7 @@ graph LR
 
 ## Comparison with Alternatives
 
-| Feature             | instructoR | Manual Parsing | Python instructor |
+| Feature             | extractoR | Manual Parsing | Python instructor |
 | ------------------- | ---------- | -------------- | ----------------- |
 | Automatic retry     | ✓          | ✗              | ✓                 |
 | Schema validation   | ✓          | ✗              | ✓                 |
@@ -321,7 +321,7 @@ graph LR
 
 ### API Setup
 
-instructoR works with any LLM supported by
+extractoR works with any LLM supported by
 [ellmer](https://github.com/hadley/ellmer):
 
 ``` r
@@ -363,7 +363,7 @@ result <- extract(
 
 ### Getting Started
 
-  - **Vignette**: `vignette("getting-started", package = "instructoR")`
+  - **Vignette**: `vignette("getting-started", package = "extractoR")`
   - **Function Reference**: `?extract`, `?as_json_schema`
   - **Ollama Example**: `inst/examples/ollama_example.R`
 
@@ -391,7 +391,7 @@ result <- extract(
 
 ## Comparison with Alternatives
 
-| Feature              | instructoR | Manual Parsing | JSON Mode | Python instructor |
+| Feature              | extractoR | Manual Parsing | JSON Mode | Python instructor |
 | -------------------- | ---------- | -------------- | --------- | ----------------- |
 | Automatic validation | ✅          | ❌              | ❌         | ✅                 |
 | Self-correction      | ✅          | ❌              | ❌         | ✅                 |
@@ -429,12 +429,12 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed guidelines.
 
 ## Citation
 
-If you use instructoR in your research, please cite:
+If you use extractoR in your research, please cite:
 
 ``` bibtex
 @software{instructor_r,
   author = {Mulder, Skander Tahar},
-  title = {instructoR: Self-Correcting Structured Extraction with LLMs in R},
+  title = {extractoR: Self-Correcting Structured Extraction with LLMs in R},
   year = {2025},
   url = {https://github.com/SkanderMulder/extractoR}
 }

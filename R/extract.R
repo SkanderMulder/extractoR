@@ -96,7 +96,8 @@ extract <- function(text,
     model = model,
     strategy = strategy,
     max_retries = max_retries,
-    .progress = .progress
+    .progress = .progress,
+    temperature = temperature
   )
 
   if (.progress) {

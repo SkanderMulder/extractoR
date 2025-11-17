@@ -1,5 +1,5 @@
 library(testthat)
-library(instructoR)
+library(extractoR)
 
 # Tests for as_json_schema ----
 

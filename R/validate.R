@@ -11,6 +11,7 @@
 #' @param strategy The self-correction strategy ("reflect", "direct", "polite").
 #' @param max_retries The maximum number of retry attempts.
 #' @param .progress Logical, whether to show progress feedback using `cli`.
+#' @param temperature The sampling temperature for the LLM.
 #'
 #' @return A list representing the valid JSON response, or an error if validation
 #'  fails after `max_retries`.
@@ -22,7 +23,8 @@ validate_and_fix <- function(
   model,
   strategy,
   max_retries,
-  .progress = TRUE
+  .progress = TRUE,
+  temperature = 0.0
 ) {
   attempt <- 1
   response <- initial_response
@@ -53,7 +55,7 @@ validate_and_fix <- function(
     response <- ellmer::chat(
       model = model,
       messages = list(list(role = "user", content = prompt_fix)),
-      temperature = 0.0
+      temperature = temperature
     )$content
 
     attempt <- attempt + 1

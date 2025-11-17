@@ -1,4 +1,4 @@
-Package: instructoR
+Package: extractoR
 Title: Self-Correcting Structured Extraction with LLMs in R
 Version: 0.1.0
 Authors@R:

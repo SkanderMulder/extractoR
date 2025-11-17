@@ -1,8 +1,8 @@
 ---
-title: "Getting Started with instructoR"
+title: "Getting Started with extractoR"
 output: rmarkdown::html_vignette
 vignette: >
-  %\VignetteIndexEntry{Getting Started with instructoR}
+  %\VignetteIndexEntry{Getting Started with extractoR}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -15,12 +15,12 @@ knitr::opts_chunk$set(
 ```
 
 ```{r setup}
-library(instructoR)
+library(extractoR)
 ```
 
 ## Introduction
 
-instructoR is a package for extracting structured data from unstructured text using Large Language Models (LLMs). It automatically validates LLM responses against your schema and retries with intelligent feedback until the output is valid.
+extractoR is a package for extracting structured data from unstructured text using Large Language Models (LLMs). It automatically validates LLM responses against your schema and retries with intelligent feedback until the output is valid.
 
 This vignette will guide you through:
 
@@ -30,7 +30,7 @@ This vignette will guide you through:
 4. Working with local models (Ollama)
 5. Real-world use cases
 
-## Why instructoR?
+## Why extractoR?
 
 When extracting structured data from text with LLMs, you typically encounter:
 
@@ -39,7 +39,7 @@ When extracting structured data from text with LLMs, you typically encounter:
 - **Manual retry logic** that's error-prone
 - **Inconsistent outputs** across different prompts
 
-instructoR handles all of this automatically:
+extractoR handles all of this automatically:
 
 ```{r eval=FALSE}
 # Instead of this mess:
@@ -107,7 +107,7 @@ Here's what happens behind the scenes:
 
 ## Defining Schemas
 
-instructoR supports rich schema definitions that map naturally to R types.
+extractoR supports rich schema definitions that map naturally to R types.
 
 ### Basic Types
 
@@ -186,7 +186,7 @@ schema <- list(
 
 ## Self-Correction Strategies
 
-instructoR offers three strategies for providing feedback when validation fails.
+extractoR offers three strategies for providing feedback when validation fails.
 
 ### Reflect (Default)
 
@@ -220,7 +220,7 @@ result <- extract(text, schema, strategy = "polite")
 
 ## Working with Local Models
 
-instructoR supports local LLMs through Ollama, enabling:
+extractoR supports local LLMs through Ollama, enabling:
 
 - **Privacy**: Data never leaves your machine
 - **Cost savings**: No API fees
