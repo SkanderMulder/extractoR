@@ -2,3 +2,5 @@
 ^.claude$
 ^.Rcheck$
 ^LICENSE\.md$
+^doc$
+^Meta$
