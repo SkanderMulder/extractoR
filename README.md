@@ -18,6 +18,22 @@ result <- extract(my_review_text, schema, model = "gpt-4o-mini")
 # → guaranteed valid or controlled failure
 ```
 
+### Using with Ollama
+
+You can also use `extractoR` with local models via Ollama. Make sure your Ollama server is running and you have pulled the model you want to use.
+
+```r
+# Example with Ollama
+result_ollama <- extract(
+  text = "The new phone has a great camera, but the battery life is poor.",
+  schema = list(
+    sentiment = c("positive", "negative", "neutral"),
+    features = list(list(name = "character", rating = c("good", "bad", "average")))
+  ),
+  model = "ollama/gemma:2b" # or any other Ollama model
+)
+```
+
 **Zero manual parsing. Zero malformed JSON. Zero prayers.**
 
 <!-- Placeholder for animated GIF of retry loop -->

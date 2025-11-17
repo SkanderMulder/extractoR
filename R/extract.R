@@ -42,6 +42,16 @@
 #'   )
 #'
 #'   str(result)
+#'
+#'   # Example with Ollama (make sure Ollama is running)
+#'   # result_ollama <- extract(
+#'   #   text = "The new phone has a great camera, but the battery life is poor.",
+#'   #   schema = list(
+#'   #     sentiment = c("positive", "negative", "neutral"),
+#'   #     features = list(list(name = "character", rating = c("good", "bad", "average")))
+#'   #   ),
+#'   #   model = "ollama/gemma:2b"
+#'   # )
 #' }
 extract <- function(text,
                     schema,

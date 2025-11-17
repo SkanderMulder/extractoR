@@ -243,3 +243,39 @@ test_that("extract function works end-to-end with mocking", {
     }
   )
 })
+
+# Test extract with Ollama model string
+test_that("extract function works with Ollama model string", {
+  # Mock ellmer::chat to check if the model string is passed correctly
+  mock_ellmer_chat_ollama <- function(model, system, turns, temperature) {
+    # Check if the model string is as expected
+    expect_equal(model, "ollama/gemma:2b")
+    
+    # Return a valid response
+    return(list(content = '{"sentiment": "negative", "features": [{"name": "battery life", "rating": "bad"}]}'))
+  }
+  
+  with_mocked_bindings(
+    ellmer::chat = mock_ellmer_chat_ollama,
+    .package = "ellmer",
+    {
+      schema <- list(
+        sentiment = c("positive", "negative", "neutral"),
+        features = list(list(name = "character", rating = c("good", "bad", "average")))
+      )
+      text <- "The new phone has a great camera, but the battery life is poor."
+      
+      result <- extract(
+        text = text,
+        schema = schema,
+        model = "ollama/gemma:2b",
+        .progress = FALSE
+      )
+      
+      expect_type(result, "list")
+      expect_equal(result$sentiment, "negative")
+      expect_equal(result$features[[1]]$name, "battery life")
+      expect_equal(result$features[[1]]$rating, "bad")
+    }
+  )
+})
