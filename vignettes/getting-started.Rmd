@@ -1,0 +1,504 @@
+---
+title: "Getting Started with instructoR"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Getting Started with instructoR}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+```{r setup}
+library(instructoR)
+```
+
+## Introduction
+
+instructoR is a package for extracting structured data from unstructured text using Large Language Models (LLMs). It automatically validates LLM responses against your schema and retries with intelligent feedback until the output is valid.
+
+This vignette will guide you through:
+
+1. Basic extraction workflows
+2. Defining schemas for different data types
+3. Self-correction strategies
+4. Working with local models (Ollama)
+5. Real-world use cases
+
+## Why instructoR?
+
+When extracting structured data from text with LLMs, you typically encounter:
+
+- **Malformed JSON** that breaks parsing
+- **Schema violations** with wrong types or missing required fields
+- **Manual retry logic** that's error-prone
+- **Inconsistent outputs** across different prompts
+
+instructoR handles all of this automatically:
+
+```{r eval=FALSE}
+# Instead of this mess:
+response <- ask_llm("Extract data from: ...", model)
+parsed <- tryCatch(
+  fromJSON(response),
+  error = function(e) {
+    # Manual retry logic...
+    # More error handling...
+  }
+)
+if (!validate_schema(parsed)) {
+  # More retry logic...
+}
+
+# Just do this:
+result <- extract(text, schema, model)
+# Guaranteed valid or controlled failure
+```
+
+## Basic Usage
+
+### Simple Extraction
+
+Let's start with a basic example extracting information from a product review:
+
+```{r eval=FALSE}
+review_text <- "I absolutely love this laptop! The battery lasts for 12 hours,
+                and the display is stunning. However, it's a bit heavy at 2.5kg."
+
+schema <- list(
+  sentiment = c("positive", "negative", "neutral"),
+  pros = list("character"),
+  cons = list("character"),
+  battery_hours = "integer"
+)
+
+result <- extract(
+  text = review_text,
+  schema = schema,
+  model = "gpt-4o-mini",
+  .progress = TRUE
+)
+
+str(result)
+# List of 4
+#  $ sentiment    : chr "positive"
+#  $ pros         : List of 2
+#   ..$ : chr "long battery life"
+#   ..$ : chr "stunning display"
+#  $ cons         : List of 1
+#   ..$ : chr "heavy weight"
+#  $ battery_hours: int 12
+```
+
+### Understanding the Workflow
+
+Here's what happens behind the scenes:
+
+1. **Schema Conversion**: Your R list is converted to JSON Schema
+2. **Initial Request**: The LLM receives your text and schema requirements
+3. **Validation**: The response is validated using `jsonvalidate`
+4. **Self-Correction**: If invalid, the LLM gets error feedback and tries again
+5. **Return**: Valid data is returned, or an error after max retries
+
+## Defining Schemas
+
+instructoR supports rich schema definitions that map naturally to R types.
+
+### Basic Types
+
+```{r eval=FALSE}
+schema <- list(
+  name = "character",      # String
+  age = "integer",         # Integer
+  score = "numeric",       # Number (double)
+  is_active = "logical"    # Boolean
+)
+```
+
+### Enums (Controlled Vocabularies)
+
+Use character vectors to restrict values:
+
+```{r eval=FALSE}
+schema <- list(
+  status = c("draft", "published", "archived"),
+  priority = c("low", "medium", "high", "urgent"),
+  category = c("bug", "feature", "documentation")
+)
+```
+
+### Arrays
+
+Use lists to define arrays:
+
+```{r eval=FALSE}
+schema <- list(
+  tags = list("character"),           # Array of strings
+  scores = list("numeric"),           # Array of numbers
+  flags = list("logical")             # Array of booleans
+)
+```
+
+### Nested Objects
+
+Define complex nested structures:
+
+```{r eval=FALSE}
+schema <- list(
+  author = list(
+    name = "character",
+    email = "character",
+    affiliation = "character"
+  ),
+  metadata = list(
+    created_at = "character",
+    updated_at = "character",
+    version = "integer"
+  )
+)
+```
+
+### Arrays of Objects
+
+The most powerful pattern for structured extraction:
+
+```{r eval=FALSE}
+schema <- list(
+  products = list(list(
+    name = "character",
+    price = "numeric",
+    in_stock = "logical",
+    categories = list("character")
+  )),
+  reviews = list(list(
+    author = "character",
+    rating = "integer",
+    text = "character",
+    sentiment = c("positive", "negative", "neutral")
+  ))
+)
+```
+
+## Self-Correction Strategies
+
+instructoR offers three strategies for providing feedback when validation fails.
+
+### Reflect (Default)
+
+Provides comprehensive context and encourages the LLM to reason about errors:
+
+```{r eval=FALSE}
+result <- extract(text, schema, strategy = "reflect")
+```
+
+**When to use**: Complex schemas, nested structures, or when you need the LLM to understand *why* it failed.
+
+### Direct
+
+Provides concise error messages and requests immediate correction:
+
+```{r eval=FALSE}
+result <- extract(text, schema, strategy = "direct")
+```
+
+**When to use**: Simple schemas, fast models, or when minimizing token usage matters.
+
+### Polite
+
+Uses courteous language that some models respond well to:
+
+```{r eval=FALSE}
+result <- extract(text, schema, strategy = "polite")
+```
+
+**When to use**: When working with models that benefit from encouraging prompts.
+
+## Working with Local Models
+
+instructoR supports local LLMs through Ollama, enabling:
+
+- **Privacy**: Data never leaves your machine
+- **Cost savings**: No API fees
+- **Offline usage**: Works without internet
+- **Experimentation**: Try different models easily
+
+### Setup Ollama
+
+```bash
+# Install Ollama: https://ollama.com
+# Start the server
+ollama serve
+
+# Pull a model
+ollama pull gemma:2b
+# or
+ollama pull llama3.2:3b
+```
+
+### Extract with Ollama
+
+```{r eval=FALSE}
+result <- extract(
+  text = article_text,
+  schema = schema,
+  model = "ollama/gemma:2b"  # Format: "ollama/model_name:tag"
+)
+```
+
+See `inst/examples/ollama_example.R` for a complete working example.
+
+## Real-World Use Cases
+
+### Academic Paper Extraction
+
+Extract metadata from research papers:
+
+```{r eval=FALSE}
+paper_text <- "Large Language Models Are Zero-Shot Reasoners
+               by Takeshi Kojima et al. (2022)
+
+               Abstract: We investigate the zero-shot reasoning capabilities
+               of large language models..."
+
+paper_schema <- list(
+  title = "character",
+  authors = list("character"),
+  year = "integer",
+  topics = list("character"),
+  methodology = c("qualitative", "quantitative", "mixed", "theoretical"),
+  has_code = "logical",
+  main_findings = list("character")
+)
+
+paper_info <- extract(paper_text, paper_schema, model = "gpt-4o-mini")
+```
+
+### Customer Feedback Analysis
+
+Analyze support tickets systematically:
+
+```{r eval=FALSE}
+ticket_schema <- list(
+  issue_type = c("bug", "feature_request", "question", "complaint"),
+  severity = c("low", "medium", "high", "critical"),
+  product_area = c("ui", "api", "billing", "auth", "other"),
+  sentiment = c("positive", "negative", "neutral"),
+  is_resolved = "logical",
+  mentioned_features = list("character"),
+  action_items = list("character")
+)
+
+ticket_analysis <- extract(
+  text = support_ticket_text,
+  schema = ticket_schema,
+  model = "gpt-4o-mini"
+)
+```
+
+### Medical Record Extraction
+
+Extract structured information from clinical notes:
+
+```{r eval=FALSE}
+clinical_schema <- list(
+  patient_age = "integer",
+  chief_complaint = "character",
+  symptoms = list("character"),
+  vital_signs = list(
+    temperature = "numeric",
+    blood_pressure = "character",
+    heart_rate = "integer"
+  ),
+  diagnoses = list(list(
+    condition = "character",
+    icd_code = "character",
+    confidence = c("definite", "probable", "possible")
+  )),
+  prescribed_medications = list(list(
+    name = "character",
+    dosage = "character",
+    frequency = "character"
+  ))
+)
+
+clinical_data <- extract(
+  text = clinical_note,
+  schema = clinical_schema,
+  model = "gpt-4o-mini"
+)
+```
+
+### Financial Document Processing
+
+Extract key information from financial reports:
+
+```{r eval=FALSE}
+financial_schema <- list(
+  company_name = "character",
+  reporting_period = "character",
+  revenue = "numeric",
+  expenses = "numeric",
+  profit_margin = "numeric",
+  key_metrics = list(list(
+    metric_name = "character",
+    value = "numeric",
+    unit = "character",
+    trend = c("increasing", "decreasing", "stable")
+  )),
+  risks = list("character"),
+  opportunities = list("character")
+)
+
+financial_data <- extract(
+  text = earnings_report,
+  schema = financial_schema,
+  model = "gpt-4o-mini"
+)
+```
+
+## Advanced Configuration
+
+### Controlling Retry Behavior
+
+```{r eval=FALSE}
+result <- extract(
+  text = text,
+  schema = schema,
+  model = "gpt-4o-mini",
+  max_retries = 10,        # Default: 5
+  temperature = 0.0,       # Default: 0.0 (deterministic)
+  strategy = "reflect"     # Default: "reflect"
+)
+```
+
+### Progress Monitoring
+
+Track extraction progress in detail:
+
+```{r eval=FALSE}
+result <- extract(
+  text = long_document,
+  schema = complex_schema,
+  model = "gpt-4o-mini",
+  .progress = TRUE
+)
+# ── Starting Extraction ──────────────────────────
+# ℹ Model: gpt-4o-mini
+# ℹ Max retries: 5
+# ℹ Strategy: reflect
+# ℹ Schema: {...}
+# ℹ Sending initial request to LLM...
+# ℹ Received initial response. Validating...
+# ⚠ Attempt 1 failed. Retrying with feedback...
+# ℹ Validation errors: ...
+# ✔ Extraction successful after 2 attempts.
+```
+
+### Error Handling
+
+```{r eval=FALSE}
+result <- tryCatch(
+  {
+    extract(
+      text = text,
+      schema = schema,
+      model = "gpt-4o-mini",
+      max_retries = 3
+    )
+  },
+  error = function(e) {
+    # Handle extraction failure
+    message("Extraction failed: ", e$message)
+    NULL
+  }
+)
+```
+
+## Best Practices
+
+### Schema Design
+
+1. **Be specific with enums**: Use controlled vocabularies instead of free text when possible
+2. **Start simple**: Build complex schemas incrementally
+3. **Test with examples**: Verify your schema with sample data first
+4. **Use nested objects**: Group related fields together
+
+```{r eval=FALSE}
+# Good: Specific enum
+sentiment = c("positive", "negative", "neutral", "mixed")
+
+# Less ideal: Free text
+sentiment = "character"
+```
+
+### Model Selection
+
+- **Simple extraction**: Use smaller, faster models (gemma:2b, llama3.2:3b)
+- **Complex reasoning**: Use larger models (gpt-4o, claude-3-5-sonnet)
+- **Cost-sensitive**: Start with Ollama local models
+- **Privacy-critical**: Always use Ollama for sensitive data
+
+### Performance Optimization
+
+1. **Use lower temperatures**: `temperature = 0.0` for consistency
+2. **Choose appropriate strategy**: "direct" is faster than "reflect"
+3. **Set reasonable max_retries**: 3-5 is usually sufficient
+4. **Batch similar extractions**: Process documents with similar schemas together
+
+## Troubleshooting
+
+### Common Issues
+
+**Issue**: LLM consistently fails validation
+
+```{r eval=FALSE}
+# Solution 1: Simplify your schema
+schema <- list(
+  # Remove optional or complex fields
+  required_field = "character"
+)
+
+# Solution 2: Increase max_retries
+result <- extract(text, schema, max_retries = 10)
+
+# Solution 3: Try a different model
+result <- extract(text, schema, model = "gpt-4o")
+```
+
+**Issue**: Slow extraction times
+
+```{r eval=FALSE}
+# Use a faster strategy
+result <- extract(text, schema, strategy = "direct")
+
+# Use a faster model
+result <- extract(text, schema, model = "ollama/gemma:2b")
+```
+
+**Issue**: Inconsistent results
+
+```{r eval=FALSE}
+# Use temperature = 0.0 for deterministic outputs
+result <- extract(text, schema, temperature = 0.0)
+```
+
+## Next Steps
+
+- Explore the package functions: `?extract`, `?as_json_schema`
+- Try the Ollama example: `inst/examples/ollama_example.R`
+- Check out the package GitHub: https://github.com/SkanderMulder/extractoR
+- Report issues or request features
+
+## Learn More
+
+For more information about the underlying concepts:
+
+- [JSON Schema](https://json-schema.org/)
+- [ellmer package](https://github.com/hadley/ellmer) for LLM integration
+- [instructor (Python)](https://github.com/jxnl/instructor) for similar functionality
+- [Ollama](https://ollama.com) for local model hosting

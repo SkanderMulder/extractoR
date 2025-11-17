@@ -1,35 +1,42 @@
+---
+output: github_document
+---
 
 <!-- README.md is generated from README.Rmd. Please edit that file -->
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  fig.path = "man/figures/README-",
+  out.width = "100%"
+)
+```
 
 # instructoR <img src="man/figures/logo.png" align="right" height="114" alt="" />
 
 <!-- badges: start -->
-
 <!-- badges: end -->
 
 > **Self-correcting structured extraction from text using LLMs in R**
 
-Like Python’s [instructor](https://github.com/jxnl/instructor) or
-[outlines](https://github.com/outlines-dev/outlines), but native to R.
-No more fighting with malformed JSON or parsing errors—instructoR
-automatically retries LLM calls with validation feedback until the
-output perfectly matches your schema.
+Like Python's [instructor](https://github.com/jxnl/instructor) or [outlines](https://github.com/outlines-dev/outlines), but native to R. No more fighting with malformed JSON or parsing errors—instructoR automatically retries LLM calls with validation feedback until the output perfectly matches your schema.
 
 ## Why instructoR?
 
 When working with LLMs for data extraction, you typically face:
 
-  - **Malformed JSON** that breaks `jsonlite::fromJSON()`
-  - **Schema violations** like wrong types or missing fields
-  - **Manual retry logic** with hacky error handling
-  - **Unreliable parsing** that fails in production
+- **Malformed JSON** that breaks `jsonlite::fromJSON()`
+- **Schema violations** like wrong types or missing fields
+- **Manual retry logic** with hacky error handling
+- **Unreliable parsing** that fails in production
 
 instructoR solves this by:
 
-1.  Converting R schemas to JSON Schema automatically
-2.  Validating LLM responses against your schema
-3.  Providing intelligent feedback to the LLM when validation fails
-4.  Retrying with self-correction until success or max attempts
+1. Converting R schemas to JSON Schema automatically
+2. Validating LLM responses against your schema
+3. Providing intelligent feedback to the LLM when validation fails
+4. Retrying with self-correction until success or max attempts
 
 **Result:** Guaranteed valid output or controlled failure. No surprises.
 
@@ -37,7 +44,7 @@ instructoR solves this by:
 
 Install from GitHub:
 
-``` r
+```r
 # install.packages("pak")
 pak::pak("SkanderMulder/extractoR")
 ```
@@ -48,7 +55,7 @@ pak::pak("SkanderMulder/extractoR")
 
 Extract structured data from unstructured text:
 
-``` r
+```{r eval=FALSE}
 library(instructoR)
 
 # Define what you want to extract
@@ -84,7 +91,7 @@ str(result)
 
 Use local LLMs for privacy and cost savings:
 
-``` r
+```{r eval=FALSE}
 # Start Ollama: ollama serve
 # Pull a model: ollama pull gemma:2b
 
@@ -103,7 +110,7 @@ See `inst/examples/ollama_example.R` for a complete working example.
 
 Choose how the LLM receives feedback:
 
-``` r
+```{r eval=FALSE}
 # Reflective: provides context and encourages reasoning
 extract(text, schema, strategy = "reflect")
 
@@ -118,7 +125,7 @@ extract(text, schema, strategy = "polite")
 
 Define complex nested structures naturally in R:
 
-``` r
+```{r eval=FALSE}
 schema <- list(
   # Enums (controlled vocabularies)
   status = c("draft", "published", "archived"),
@@ -151,7 +158,7 @@ schema <- list(
 
 Monitor extraction with built-in progress indicators:
 
-``` r
+```{r eval=FALSE}
 extract(text, schema, .progress = TRUE)
 # ── Starting Extraction ──────────────────────────
 # ℹ Model: gpt-4o-mini
@@ -166,7 +173,7 @@ extract(text, schema, .progress = TRUE)
 
 ### Academic Paper Metadata
 
-``` r
+```{r eval=FALSE}
 paper_schema <- list(
   title = "character",
   authors = list("character"),
@@ -182,7 +189,7 @@ extract(paper_text, paper_schema, model = "gpt-4o-mini")
 
 ### Product Review Analysis
 
-``` r
+```{r eval=FALSE}
 review_schema <- list(
   overall_sentiment = c("positive", "negative", "neutral"),
   rating_estimate = "integer",
@@ -199,7 +206,7 @@ extract(review_text, review_schema, model = "gpt-4o-mini")
 
 ### Clinical Notes Extraction
 
-``` r
+```{r eval=FALSE}
 clinical_schema <- list(
   patient_age = "integer",
   chief_complaint = "character",
@@ -221,36 +228,31 @@ extract(clinical_note, clinical_schema, model = "gpt-4o-mini")
 
 ## How It Works
 
-1.  **Schema Conversion**: Your R list schema is converted to JSON
-    Schema
-2.  **Initial Extraction**: The LLM receives your text and schema
-    requirements
-3.  **Validation**: Response is validated against JSON Schema using
-    `jsonvalidate`
-4.  **Self-Correction Loop**: If invalid, the LLM gets error feedback
-    and retries
-5.  **Guaranteed Output**: Returns valid structured data or fails
-    gracefully
+1. **Schema Conversion**: Your R list schema is converted to JSON Schema
+2. **Initial Extraction**: The LLM receives your text and schema requirements
+3. **Validation**: Response is validated against JSON Schema using `jsonvalidate`
+4. **Self-Correction Loop**: If invalid, the LLM gets error feedback and retries
+5. **Guaranteed Output**: Returns valid structured data or fails gracefully
 
-<!-- end list -->
-
-    Text + Schema → LLM → Validate → ✓ Success
-                             ↓
-                          ✗ Failed
-                             ↓
-                       Feedback → LLM → Validate → ...
+```
+Text + Schema → LLM → Validate → ✓ Success
+                         ↓
+                      ✗ Failed
+                         ↓
+                   Feedback → LLM → Validate → ...
+```
 
 ## Comparison with Alternatives
 
-| Feature             | instructoR | Manual Parsing | Python instructor |
-| ------------------- | ---------- | -------------- | ----------------- |
-| Automatic retry     | ✓          | ✗              | ✓                 |
-| Schema validation   | ✓          | ✗              | ✓                 |
-| Native R types      | ✓          | Partial        | ✗                 |
-| Local models        | ✓          | ✓              | ✓                 |
-| Zero dependencies\* | ✓          | ✓              | ✗                 |
+| Feature | instructoR | Manual Parsing | Python instructor |
+|---------|-----------|----------------|-------------------|
+| Automatic retry | ✓ | ✗ | ✓ |
+| Schema validation | ✓ | ✗ | ✓ |
+| Native R types | ✓ | Partial | ✗ |
+| Local models | ✓ | ✓ | ✓ |
+| Zero dependencies* | ✓ | ✓ | ✗ |
 
-\*Minimal dependencies: only essential R packages
+*Minimal dependencies: only essential R packages
 
 ## Configuration
 
@@ -258,7 +260,7 @@ extract(clinical_note, clinical_schema, model = "gpt-4o-mini")
 
 For OpenAI/Anthropic models via ellmer:
 
-``` r
+```{r eval=FALSE}
 # In .Renviron:
 ANTHROPIC_API_KEY="your-key-here"
 OPENAI_API_KEY="your-key-here"
@@ -266,7 +268,7 @@ OPENAI_API_KEY="your-key-here"
 
 ### Customize retry behavior
 
-``` r
+```{r eval=FALSE}
 extract(
   text = text,
   schema = schema,
@@ -279,15 +281,14 @@ extract(
 
 ## Learn More
 
-  - **Vignette**: `vignette("getting-started", package = "instructoR")`
-  - **Examples**: See `inst/examples/ollama_example.R`
-  - **Documentation**: `?extract`
-  - **Issues**: [GitHub
-    Issues](https://github.com/SkanderMulder/extractoR/issues)
+- **Vignette**: `vignette("getting-started", package = "instructoR")`
+- **Examples**: See `inst/examples/ollama_example.R`
+- **Documentation**: `?extract`
+- **Issues**: [GitHub Issues](https://github.com/SkanderMulder/extractoR/issues)
 
 ## Contributing
 
-Contributions are welcome\! Please feel free to submit a Pull Request.
+Contributions are welcome! Please feel free to submit a Pull Request.
 
 ## License
 
@@ -295,6 +296,7 @@ MIT License. See LICENSE for details.
 
 ## Acknowledgments
 
-Inspired by: - [instructor](https://github.com/jxnl/instructor) (Python)
-- [outlines](https://github.com/outlines-dev/outlines) (Python) -
-[ellmer](https://github.com/hadley/ellmer) (R LLM client)
+Inspired by:
+- [instructor](https://github.com/jxnl/instructor) (Python)
+- [outlines](https://github.com/outlines-dev/outlines) (Python)
+- [ellmer](https://github.com/hadley/ellmer) (R LLM client)
