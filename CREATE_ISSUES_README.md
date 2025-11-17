@@ -4,7 +4,23 @@ This directory contains scripts to create 37 comprehensive roadmap issues for th
 
 ## Quick Start
 
-### Option 1: Automated Creation (Recommended)
+### Option 1: GitHub Actions Workflow (EASIEST - Recommended!)
+
+No token required! Just use the GitHub Actions workflow:
+
+1. **Push this branch to GitHub** (already done!)
+
+2. **Trigger the workflow:**
+   - Go to: https://github.com/SkanderMulder/extractoR/actions/workflows/create-roadmap-issues.yml
+   - Click "Run workflow"
+   - Type `create` to confirm
+   - Click the green "Run workflow" button
+
+3. **Wait ~2 minutes** for all 37 issues to be created automatically!
+
+That's it! The workflow uses GitHub's built-in authentication, so you don't need to create any tokens.
+
+### Option 2: Manual Script (Requires Token)
 
 1. **Create a GitHub Personal Access Token:**
    - Go to: https://github.com/settings/tokens/new
@@ -29,7 +45,7 @@ This directory contains scripts to create 37 comprehensive roadmap issues for th
    python3 create_issues.py
    ```
 
-### Option 2: Manual Creation
+### Option 3: Manual Creation
 
 If you prefer to create issues manually or want to review them first:
 
@@ -41,15 +57,6 @@ If you prefer to create issues manually or want to review them first:
    - Copy title and body from the roadmap document
    - Add the appropriate labels
    - Submit
-
-### Option 3: Using GitHub CLI
-
-If you have `gh` CLI installed:
-
-```bash
-# This would require creating a shell script to parse the roadmap
-# and create issues using gh commands
-```
 
 ## What Issues Will Be Created?
 
