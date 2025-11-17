@@ -500,5 +500,5 @@ For more information about the underlying concepts:
 
 - [JSON Schema](https://json-schema.org/)
 - [ellmer package](https://github.com/hadley/ellmer) for LLM integration
-- [instructor (Python)](https://github.com/jxnl/instructor) for similar functionality
+- [extractoR (R)](https://github.com/SkanderMulder/extractoR) for similar functionality
 - [Ollama](https://ollama.com) for local model hosting

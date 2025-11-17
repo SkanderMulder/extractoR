@@ -6,8 +6,6 @@
 \alias{extractoR-package}
 \title{extractoR: Self-Correcting Structured Extraction with LLMs in R}
 \description{
-\if{html}{\figure{logo.png}{options: style='float: right' alt='logo' width='120'}}
-
 Like Python's 'instructor' or 'outlines'. Automatically retries LLM calls with validation feedback until output matches your schema.
 }
 \author{

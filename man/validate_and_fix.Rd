@@ -6,7 +6,7 @@
 \usage{
 validate_and_fix(
   initial_response,
-  json_schema_str,
+  json_schema_obj,
   text,
   model,
   strategy,
@@ -17,7 +17,7 @@ validate_and_fix(
 \arguments{
 \item{initial_response}{The initial JSON string response from the LLM.}
 
-\item{json_schema_str}{The JSON schema as a string.}
+\item{json_schema_obj}{A \code{JsonSchema} S7 object.}
 
 \item{text}{The original input text that was sent to the LLM.}
 

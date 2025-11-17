@@ -1,3 +1,5 @@
+library(S7)
+
 #' @title Extract Structured Information from Text using LLMs
 #'
 #' @description
@@ -61,9 +63,9 @@ extract <- function(text,
                     .progress = TRUE) {
   strategy <- match.arg(strategy)
 
-  # 1. Convert R schema to JSON Schema
-  json_schema <- as_json_schema(schema)
-  json_schema_str <- jsonlite::toJSON(json_schema, auto_unbox = TRUE, pretty = TRUE)
+  # 1. Convert R schema to JSON Schema S7 object
+  json_schema_obj <- as_json_schema(schema)
+  json_schema_str <- json_schema_obj@json_schema_str
 
   # 2. Build initial extraction prompt
   initial_prompt <- build_extraction_prompt(text, json_schema_str)
@@ -91,7 +93,7 @@ extract <- function(text,
   # 4. Validate and fix loop
   result <- validate_and_fix(
     initial_response = initial_response,
-    json_schema_str = json_schema_str,
+    json_schema_obj = json_schema_obj,
     text = text,
     model = model,
     strategy = strategy,

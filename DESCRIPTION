@@ -3,6 +3,8 @@ Title: Self-Correcting Structured Extraction with LLMs in R
 Version: 0.1.0
 Authors@R:
     person("Skander Tahar Mulder", email = "Skandermulder@gmail.com", role = c("aut", "cre"))
+Author: Skander Tahar Mulder [aut, cre]
+Maintainer: Skander Tahar Mulder <Skandermulder@gmail.com>
 Description: Like Python's 'instructor' or 'outlines'. Automatically retries LLM calls with validation feedback until output matches your schema.
 License: MIT
 Depends:
@@ -12,9 +14,7 @@ Imports:
   jsonlite,
   jsonvalidate,
   cli,
-  rlang,
-  withr,
-  glue
+  S7
 Suggests:
     testthat (>= 3.0.0),
     covr,
