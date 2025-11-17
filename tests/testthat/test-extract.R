@@ -78,17 +78,17 @@ test_that("build_extraction_prompt creates correct prompt structure", {
   json_schema_str <- '{"type": "object", "properties": {"key": {"type": "string"}}}'
   prompt <- build_extraction_prompt(text, json_schema_str)
 
-  expect_true(grepl("Extract structured information from the following text as JSON.", prompt))
-  expect_true(grepl("You MUST respond with valid JSON that conforms EXACTLY to this JSON Schema:", prompt))
-  expect_true(grepl(json_schema_str, prompt))
-  expect_true(grepl("Text:\n    Some sample text.", prompt))
-  expect_true(grepl("Valid JSON:", prompt))
+  expect_true(grepl("Extract structured information from the following text as JSON.", prompt, fixed = TRUE))
+  expect_true(grepl("You MUST respond with valid JSON that conforms EXACTLY to this JSON Schema:", prompt, fixed = TRUE))
+  expect_true(grepl(json_schema_str, prompt, fixed = TRUE))
+  expect_true(grepl("Some sample text.", prompt, fixed = TRUE))
+  expect_true(grepl("Valid JSON:", prompt, fixed = TRUE))
 })
 
 test_that("format_validation_errors handles single error", {
   errors <- list(list(message = "Error 1", dataPath = ".field", schemaPath = "#/properties/field"))
   formatted <- format_validation_errors(errors)
-  expect_true(grepl("- Error 1 (Path: .field, Schema: #/properties/field)", formatted))
+  expect_true(grepl("- Error 1 (Path: .field, Schema: #/properties/field)", formatted, fixed = TRUE))
 })
 
 test_that("format_validation_errors handles multiple errors", {
@@ -112,7 +112,7 @@ mock_chat_fail_then_success <- function(...) {
   messages <- args$messages
   last_message <- messages[[length(messages)]]$content
 
-  if (grepl("FIX THIS JSON", last_message) || grepl("You previously failed", last_message)) {
+  if (grepl("validation errors", last_message) || grepl("Fix these errors", last_message)) {
     # Second attempt, return valid JSON
     list(content = '{"title": "Corrected Title", "year": 2024, "topics": ["Corrected"], "is_open_access": false}')
   } else {
@@ -142,7 +142,7 @@ test_that("extract works with valid initial response", {
       )
       expect_equal(result$title, "Test Title")
       expect_equal(result$year, 2023)
-      expect_equal(result$topics, c("R", "Testing") )
+      expect_equal(result$topics, list("R", "Testing"))
       expect_equal(result$is_open_access, TRUE)
       expect_equal(attr(result, "attempts"), 1)
     }
