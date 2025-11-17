@@ -10,7 +10,6 @@
 experimental](https://img.shields.io/badge/lifecycle-experimental-orange.svg)](https://lifecycle.r-lib.org/articles/stages.html#experimental)
 [![License:
 MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
-[![R-Universe](https://skandermulder.r-universe.dev/badges/extractoR)](https://skandermulder.r-universe.dev/extractoR)
 <!-- badges: end -->
 
 > **Self-Correcting Structured Data Extraction from Text Using Large
@@ -78,12 +77,6 @@ remotes::install_github("SkanderMulder/extractoR")
 
 # Or using devtools
 devtools::install_github("SkanderMulder/extractoR")
-```
-
-### From R-Universe
-
-``` r
-install.packages("extractoR", repos = "https://skandermulder.r-universe.dev")
 ```
 
 -----
@@ -465,9 +458,3 @@ validation
 **Special thanks** to the R community and all contributors.
 
 -----
-
-<div data-align="center">
-
-<sub>Built with ❤️ for the R community</sub>
-
-</div>
