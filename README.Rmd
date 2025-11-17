@@ -13,14 +13,20 @@ knitr::opts_chunk$set(
 )
 ```
 
-# instructoR <img src="man/figures/logo.png" align="right" height="114" alt="" />
+# instructoR <img src="man/figures/logo.png" align="right" height="139" alt="instructoR logo" />
 
 <!-- badges: start -->
+[![R-CMD-check](https://github.com/SkanderMulder/extractoR/actions/workflows/r.yml/badge.svg)](https://github.com/SkanderMulder/extractoR/actions/workflows/r.yml)
+[![Lifecycle: experimental](https://img.shields.io/badge/lifecycle-experimental-orange.svg)](https://lifecycle.r-lib.org/articles/stages.html#experimental)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
+[![R-Universe](https://skandermulder.r-universe.dev/badges/instructoR)](https://skandermulder.r-universe.dev/instructoR)
 <!-- badges: end -->
 
-> **Self-correcting structured extraction from text using LLMs in R**
+> **Self-Correcting Structured Data Extraction from Text Using Large Language Models**
 
-Like Python's [instructor](https://github.com/jxnl/instructor) or [outlines](https://github.com/outlines-dev/outlines), but native to R. No more fighting with malformed JSON or parsing errors—instructoR automatically retries LLM calls with validation feedback until the output perfectly matches your schema.
+**instructoR** is an R package that automatically validates and corrects LLM outputs against your schema. Inspired by Python's [instructor](https://github.com/jxnl/instructor) and [outlines](https://github.com/outlines-dev/outlines), it eliminates the pain of malformed JSON and schema violations through intelligent self-correction.
+
+**Stop fighting with LLM outputs. Get guaranteed valid data or controlled failure.**
 
 ## Why instructoR?
 
@@ -40,20 +46,49 @@ instructoR solves this by:
 
 **Result:** Guaranteed valid output or controlled failure. No surprises.
 
+---
+
+## Features
+
+- **Automatic Validation**: JSON Schema validation with detailed error reporting
+- **Self-Correction**: Intelligent retry with LLM feedback until success
+- **Rich Schema Support**: Enums, nested objects, arrays, and complex structures
+- **Local & Cloud Models**: Works with OpenAI, Anthropic, or local Ollama models
+- **Multiple Strategies**: Choose between reflective, direct, or polite correction styles
+- **Progress Tracking**: Built-in progress indicators for long operations
+- **Type Safety**: Native R type conversion from JSON responses
+- **Zero Configuration**: Works out of the box with sensible defaults
+
+---
+
 ## Installation
 
-Install from GitHub:
+### From GitHub (Recommended)
 
 ```r
-# install.packages("pak")
+# Using pak (fastest)
 pak::pak("SkanderMulder/extractoR")
+
+# Or using remotes
+remotes::install_github("SkanderMulder/extractoR")
+
+# Or using devtools
+devtools::install_github("SkanderMulder/extractoR")
 ```
+
+### From R-Universe
+
+```r
+install.packages("instructoR", repos = "https://skandermulder.r-universe.dev")
+```
+
+---
 
 ## Quick Start
 
-### Basic Usage
+### 30-Second Example
 
-Extract structured data from unstructured text:
+Extract structured data from unstructured text in just a few lines:
 
 ```{r eval=FALSE}
 library(instructoR)
@@ -104,9 +139,13 @@ result <- extract(
 
 See `inst/examples/ollama_example.R` for a complete working example.
 
-## Features
+---
 
-### Self-Correction Strategies
+## Core Concepts
+
+### Schema Definition
+
+instructoR uses intuitive R syntax for schema definition:
 
 Choose how the LLM receives feedback:
 
@@ -121,9 +160,9 @@ extract(text, schema, strategy = "direct")
 extract(text, schema, strategy = "polite")
 ```
 
-### Rich Schema Support
+### Advanced Schema Patterns
 
-Define complex nested structures naturally in R:
+Build complex, production-ready schemas:
 
 ```{r eval=FALSE}
 schema <- list(
@@ -168,6 +207,12 @@ extract(text, schema, .progress = TRUE)
 # ℹ Received initial response. Validating...
 # ✔ Extraction successful after 1 attempts.
 ```
+
+---
+
+## Use Cases
+
+instructoR excels at extracting structured information from various domains:
 
 ## Real-World Examples
 
@@ -226,21 +271,30 @@ clinical_schema <- list(
 extract(clinical_note, clinical_schema, model = "gpt-4o-mini")
 ```
 
+---
+
 ## How It Works
 
-1. **Schema Conversion**: Your R list schema is converted to JSON Schema
-2. **Initial Extraction**: The LLM receives your text and schema requirements
-3. **Validation**: Response is validated against JSON Schema using `jsonvalidate`
-4. **Self-Correction Loop**: If invalid, the LLM gets error feedback and retries
-5. **Guaranteed Output**: Returns valid structured data or fails gracefully
+instructoR implements a validation-correction loop:
 
+```mermaid
+graph LR
+    A[Input Text + Schema] --> B[LLM Generation]
+    B --> C{Valid JSON?}
+    C -->|Yes| D[Return Data]
+    C -->|No| E[Generate Feedback]
+    E --> F{Max Retries?}
+    F -->|No| B
+    F -->|Yes| G[Throw Error]
 ```
-Text + Schema → LLM → Validate → ✓ Success
-                         ↓
-                      ✗ Failed
-                         ↓
-                   Feedback → LLM → Validate → ...
-```
+
+### Process Steps
+
+1. **Schema Conversion**: R list → JSON Schema
+2. **Initial Request**: LLM receives text and schema requirements
+3. **Validation**: `jsonvalidate` checks response against schema
+4. **Self-Correction**: On failure, LLM receives error details and retries
+5. **Guaranteed Output**: Valid data returned or controlled error thrown
 
 ## Comparison with Alternatives
 
@@ -254,49 +308,151 @@ Text + Schema → LLM → Validate → ✓ Success
 
 *Minimal dependencies: only essential R packages
 
+---
+
 ## Configuration
 
-### Set up API keys
+### API Setup
 
-For OpenAI/Anthropic models via ellmer:
+instructoR works with any LLM supported by [ellmer](https://github.com/hadley/ellmer):
 
 ```{r eval=FALSE}
-# In .Renviron:
+# Option 1: Environment variables (recommended)
+# Add to .Renviron:
 ANTHROPIC_API_KEY="your-key-here"
 OPENAI_API_KEY="your-key-here"
+
+# Option 2: Set in R session
+Sys.setenv(ANTHROPIC_API_KEY = "your-key-here")
 ```
 
-### Customize retry behavior
+### Advanced Options
 
 ```{r eval=FALSE}
-extract(
+result <- extract(
   text = text,
   schema = schema,
-  model = "gpt-4o-mini",
-  max_retries = 10,        # Default: 5
-  temperature = 0.0,       # Default: 0.0 (deterministic)
-  strategy = "reflect"     # Default: "reflect"
+  model = "gpt-4o-mini",    # Model selection
+  max_retries = 10,         # Retry limit (default: 5)
+  temperature = 0.0,        # Sampling temperature (default: 0.0)
+  strategy = "reflect",     # Correction strategy
+  .progress = TRUE          # Show progress
 )
 ```
 
-## Learn More
+### Recommended Settings
+
+| Use Case | Model | Strategy | Max Retries | Temperature |
+|----------|-------|----------|-------------|-------------|
+| Production | gpt-4o-mini | direct | 5 | 0.0 |
+| Complex schemas | gpt-4o | reflect | 10 | 0.0 |
+| Local/private | ollama/gemma:2b | polite | 3 | 0.0 |
+| Experimentation | gpt-3.5-turbo | direct | 3 | 0.2 |
+
+---
+
+## Documentation
+
+### Getting Started
 
 - **Vignette**: `vignette("getting-started", package = "instructoR")`
-- **Examples**: See `inst/examples/ollama_example.R`
-- **Documentation**: `?extract`
-- **Issues**: [GitHub Issues](https://github.com/SkanderMulder/extractoR/issues)
+- **Function Reference**: `?extract`, `?as_json_schema`
+- **Ollama Example**: `inst/examples/ollama_example.R`
+
+### Resources
+
+- [GitHub Repository](https://github.com/SkanderMulder/extractoR)
+- [Issue Tracker](https://github.com/SkanderMulder/extractoR/issues)
+- [Changelog](NEWS.md)
+
+---
+
+## Performance Tips
+
+1. **Use appropriate models**: Smaller models for simple schemas, larger for complex reasoning
+2. **Set temperature = 0.0**: For deterministic, reproducible outputs
+3. **Choose the right strategy**: `direct` is faster, `reflect` is more thorough
+4. **Limit retries**: 3-5 retries is usually sufficient
+5. **Test schemas**: Verify with sample data before production use
+6. **Use Ollama for privacy**: Keep sensitive data on your infrastructure
+
+---
+
+## Comparison with Alternatives
+
+| Feature | instructoR | Manual Parsing | JSON Mode | Python instructor |
+|---------|-----------|----------------|-----------|-------------------|
+| Automatic validation | ✅ | ❌ | ❌ | ✅ |
+| Self-correction | ✅ | ❌ | ❌ | ✅ |
+| Native R types | ✅ | Partial | ❌ | ❌ |
+| Local models | ✅ | ✅ | ✅ | ✅ |
+| Schema flexibility | ✅ | ❌ | Limited | ✅ |
+| Zero config | ✅ | ❌ | ❌ | ❌ |
+
+---
+
+## Roadmap
+
+- [ ] Support for optional fields in schemas
+- [ ] Streaming extraction for large documents
+- [ ] Batch processing utilities
+- [ ] Schema inference from examples
+- [ ] Integration with more LLM providers
+- [ ] Performance benchmarks
+
+---
 
 ## Contributing
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+We welcome contributions! Please:
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Make your changes with tests
+4. Run `devtools::check()` to ensure quality
+5. Submit a Pull Request
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed guidelines.
+
+---
+
+## Citation
+
+If you use instructoR in your research, please cite:
+
+```bibtex
+@software{instructor_r,
+  author = {Mulder, Skander Tahar},
+  title = {instructoR: Self-Correcting Structured Extraction with LLMs in R},
+  year = {2025},
+  url = {https://github.com/SkanderMulder/extractoR}
+}
+```
+
+---
 
 ## License
 
-MIT License. See LICENSE for details.
+MIT License - see [LICENSE.md](LICENSE.md) for details.
+
+---
 
 ## Acknowledgments
 
-Inspired by:
-- [instructor](https://github.com/jxnl/instructor) (Python)
-- [outlines](https://github.com/outlines-dev/outlines) (Python)
-- [ellmer](https://github.com/hadley/ellmer) (R LLM client)
+**Built with:**
+- [ellmer](https://github.com/hadley/ellmer) - R interface to LLMs
+- [jsonvalidate](https://github.com/ropensci/jsonvalidate) - JSON Schema validation
+- [jsonlite](https://github.com/jeroen/jsonlite) - JSON parsing
+
+**Inspired by:**
+- [instructor](https://github.com/jxnl/instructor) - Python structured outputs
+- [outlines](https://github.com/outlines-dev/outlines) - Python structured generation
+- [Pydantic](https://github.com/pydantic/pydantic) - Data validation
+
+**Special thanks** to the R community and all contributors.
+
+---
+
+<div align="center">
+  <sub>Built with ❤️ for the R community</sub>
+</div>
