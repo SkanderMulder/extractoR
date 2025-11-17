@@ -216,7 +216,7 @@ extract(text, schema, .progress = TRUE)
 
 ## Use Cases
 
-instructoR excels at extracting structured information from various
+extractoR excels at extracting structured information from various
 domains:
 
 ## Real-World Examples
