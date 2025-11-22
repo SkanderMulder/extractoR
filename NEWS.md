@@ -1,3 +1,12 @@
+# extractoR (development version)
+
+## New Features
+
+* Added support for optional fields in schemas using `optional()` function (#1)
+  - Fields can now be marked as optional, allowing for more flexible extraction
+  - Works with all field types: atomic, arrays, enums, and nested objects
+  - Example: `schema <- list(name = "character", email = optional("character"))`
+
 # extractoR 0.1.0
 
 ## Initial Release

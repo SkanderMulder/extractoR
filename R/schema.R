@@ -2,6 +2,74 @@
 #' @importFrom S7 new_class
 NULL
 
+#' @title S7 Class for Optional Field
+#'
+#' @description
+#' An S7 class to represent an optional field in a schema.
+#'
+#' @slot value The field definition (can be a type string, enum vector, list, etc.)
+#' @export
+OptionalField <- new_class(
+  "OptionalField",
+  properties = list(
+    value = class_any
+  )
+)
+
+#' @title Mark a Field as Optional
+#'
+#' @description
+#' Wraps a field definition to mark it as optional in the schema.
+#' By default, all fields in a schema are required. Use this function
+#' to indicate that a field may be omitted from the output.
+#'
+#' @param field The field definition (e.g., "character", c("a", "b"), list("integer"))
+#'
+#' @return An OptionalField S7 object.
+#' @export
+#'
+#' @examples
+#' # Schema with optional fields
+#' schema <- list(
+#'   name = "character",              # required
+#'   age = optional("integer"),       # optional
+#'   email = optional("character"),   # optional
+#'   tags = optional(list("character")) # optional array
+#' )
+optional <- function(field) {
+  OptionalField(value = field)
+}
+
+#' @title Check if a Field is Optional
+#'
+#' @description
+#' Internal function to check if a field is wrapped with optional().
+#'
+#' @param field The field to check.
+#'
+#' @return Logical, TRUE if the field is an OptionalField.
+#' @keywords internal
+is_optional <- function(field) {
+  S7::S7_inherits(field, OptionalField)
+}
+
+#' @title Extract Value from Optional Field
+#'
+#' @description
+#' Internal function to extract the actual value from an OptionalField.
+#'
+#' @param field An OptionalField object.
+#'
+#' @return The unwrapped field value.
+#' @keywords internal
+unwrap_optional <- function(field) {
+  if (is_optional(field)) {
+    field@value
+  } else {
+    field
+  }
+}
+
 #' @title S7 Class for JSON Schema
 #'
 #' @description
@@ -35,6 +103,7 @@ JsonSchema <- new_class(
 #'   - Atomic types: Use character strings like "character", "integer", "numeric", "logical".
 #'   - Arrays: Use `list("character")` for an array of strings, `list(list(name = "character"))` for an array of objects.
 #'   - Nested objects: Use nested lists.
+#'   - Optional fields: Use `optional()` to wrap any field definition to mark it as optional.
 #'
 #' @return A list representing the JSON Schema.
 #' @export
@@ -57,6 +126,18 @@ JsonSchema <- new_class(
 #'   keywords = list("character"),
 #'   entities = list(list(name = "character", type = "character"))
 #' ))
+#'
+#' # Schema with optional fields
+#' as_json_schema(list(
+#'   name = "character",                    # required
+#'   age = optional("integer"),             # optional
+#'   email = optional("character"),         # optional
+#'   tags = optional(list("character")),    # optional array
+#'   metadata = optional(list(              # optional nested object
+#'     created = "character",
+#'     updated = "character"
+#'   ))
+#' ))
 as_json_schema <- function(schema) {
   if (!is.list(schema)) {
     stop("Schema must be a list.", call. = FALSE)
@@ -65,11 +146,21 @@ as_json_schema <- function(schema) {
   json_schema_list <- list(
     type = "object",
     properties = list(),
-    required = names(schema) # Assume all top-level fields are required
+    required = character(0) # Will be populated with non-optional fields
   )
 
   for (name in names(schema)) {
     value <- schema[[name]]
+    is_field_optional <- is_optional(value)
+
+    # Unwrap optional fields to get the actual type definition
+    if (is_field_optional) {
+      value <- unwrap_optional(value)
+    } else {
+      # Add non-optional fields to required list
+      json_schema_list$required <- c(json_schema_list$required, name)
+    }
+
     property <- list()
 
     if (is.character(value) && length(value) == 1) {

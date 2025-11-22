@@ -52,7 +52,8 @@ extractoR solves this by:
 
 - **Automatic Validation**: JSON Schema validation with detailed error reporting
 - **Self-Correction**: Intelligent retry with LLM feedback until success
-- **Rich Schema Support**: Enums, nested objects, arrays, and complex structures
+- **Rich Schema Support**: Enums, nested objects, arrays, optional fields, and complex structures
+- **Optional Fields**: Mark fields as optional using `optional()` for flexible extraction
 - **Local & Cloud Models**: Works with OpenAI, Anthropic, or local Ollama models
 - **Multiple Strategies**: Choose between reflective, direct, or polite correction styles
 - **Progress Tracking**: Built-in progress indicators for long operations
@@ -175,13 +176,14 @@ schema <- list(
   rating = "numeric",
   is_featured = "logical",
 
-  # Arrays
-  tags = list("character"),
+  # Optional fields (may be omitted from output)
+  subtitle = optional("character"),
+  tags = optional(list("character")),
 
   # Nested objects
   author = list(
     name = "character",
-    email = "character"
+    email = optional("character")  # Optional nested field
   ),
 
   # Arrays of objects
@@ -192,6 +194,31 @@ schema <- list(
   ))
 )
 ```
+
+### Optional Fields
+
+Mark fields as optional when they may not be present in all extractions:
+
+```{r eval=FALSE}
+schema <- list(
+  # Required fields
+  title = "character",
+  year = "integer",
+
+  # Optional fields
+  subtitle = optional("character"),
+  doi = optional("character"),
+  keywords = optional(list("character")),
+
+  # Optional nested objects
+  funding = optional(list(
+    agency = "character",
+    grant_number = "character"
+  ))
+)
+```
+
+By default, all fields are required. Use `optional()` to mark fields that may be missing from the extracted data.
 
 ### Progress Tracking
 
@@ -393,7 +420,7 @@ result <- extract(
 
 ## Roadmap
 
-- [ ] Support for optional fields in schemas
+- [x] Support for optional fields in schemas
 - [ ] Streaming extraction for large documents
 - [ ] Batch processing utilities
 - [ ] Schema inference from examples
